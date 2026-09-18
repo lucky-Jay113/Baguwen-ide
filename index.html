@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BaguWen IDE · Java 八股面试工作台</title>
+<link rel="preconnect" href="https://miaoda.feishu.cn">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+/* ============ 设计令牌：IDE 工程台 ============ */
+:root{
+  --bg:#F3F7F4;
+  --surface:#FFFFFF;
+  --panel:#FFFFFF;
+  --panel-2:#EDF4EF;
+  --ink:#1F2A24;
+  --ink-2:#5C6B62;
+  --ink-3:#93A29A;
+  --line:#DEE8E0;
+  --line-2:#C9D8CC;
+  --accent:#16A34A;
+  --accent-2:#15803D;
+  --accent-soft:#E7F6EC;
+  --ok:#16A34A;
+  --ok-soft:#E7F6EC;
+  --warn:#B7791F;
+  --warn-soft:#F8F1E3;
+  --bad:#D64545;
+  --bad-soft:#FBE9E9;
+  --info:#3B82A4;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+  --sans:'Noto Sans SC',-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  --shadow:0 1px 2px rgba(31,42,36,.05),0 4px 16px rgba(31,42,36,.05);
+  --radius:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:var(--sans);
+  background:var(--bg);
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.65;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--accent-soft)}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit}
+a{color:inherit;text-decoration:none}
+
+/* ============ 应用骨架 ============ */
+.app{display:flex;flex-direction:column;height:100vh}
+
+/* 标题栏（窗口栏） */
+.titlebar{
+  display:flex;align-items:center;gap:14px;
+  height:46px;padding:0 16px;
+  background:var(--surface);color:var(--ink);
+  border-bottom:1px solid var(--line);
+  flex:none;
+}
+.tb-dots{display:flex;gap:7px}
+.tb-dots i{width:11px;height:11px;border-radius:50%}
+.tb-dots i:nth-child(1){background:#E2644A}
+.tb-dots i:nth-child(2){background:#D9A13B}
+.tb-dots i:nth-child(3){background:#5FA67A}
+.tb-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:14px;letter-spacing:.2px;white-space:nowrap}
+.tb-brand .logo{display:grid;place-items:center;width:24px;height:24px;border-radius:6px;background:var(--accent);color:#fff;font-family:var(--mono);font-weight:700;font-size:12px}
+.tb-brand small{font-weight:400;color:var(--ink-3);font-size:11px;letter-spacing:0}
+.tb-nav{display:flex;gap:2px;margin-left:8px;overflow-x:auto;scrollbar-width:none}
+.tb-nav::-webkit-scrollbar{display:none}
+.tb-nav button{
+  display:flex;align-items:center;gap:7px;
+  padding:7px 13px;border-radius:7px;color:var(--ink-2);font-size:13px;font-weight:500;white-space:nowrap;
+}
+.tb-nav button:hover{color:var(--ink);background:var(--panel-2)}
+.tb-nav button.active{color:var(--accent);background:var(--accent-soft)}
+.tb-nav button svg{width:14px;height:14px;flex:none}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.tb-heat{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--ink-2);background:var(--panel-2);padding:5px 10px;border-radius:20px;white-space:nowrap}
+.tb-heat b{color:var(--ink);font-weight:600}
+.tb-heat .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+
+/* 工作区 */
+.workspace{display:flex;flex:1;min-height:0}
+
+/* 侧边栏（工程树） */
+.sidebar{
+  width:268px;flex:none;
+  background:var(--panel);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;
+  transition:margin-left .22s ease;
+}
+.sidebar-head{padding:13px 14px 9px;font-size:11px;font-weight:700;letter-spacing:1.6px;color:var(--ink-3);display:flex;align-items:center;justify-content:space-between}
+.sidebar-head .cnt{font-family:var(--mono);font-weight:500}
+.tree{flex:1;overflow-y:auto;padding:2px 8px 16px;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+.tree::-webkit-scrollbar{width:8px}
+.tree::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
+.tree-group{margin-bottom:4px}
+.tree-cat{
+  display:flex;align-items:center;gap:8px;width:100%;
+  padding:7px 9px;border-radius:7px;font-size:13px;font-weight:600;color:var(--ink);
+}
+.tree-cat:hover{background:var(--panel-2)}
+.tree-cat .arrow{width:9px;height:9px;flex:none;color:var(--ink-3);transition:transform .15s}
+.tree-cat.open .arrow{transform:rotate(90deg)}
+.tree-cat .name{flex:1;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-cat .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
+.tree-cat .badge{
+  font-size:9.5px;padding:1px 6px;border-radius:10px;font-weight:600;font-family:var(--mono);
+}
+.tree-qlist{display:none;padding:2px 0 6px 6px}
+.tree-group.open .tree-qlist{display:block}
+.tree-q{
+  display:flex;align-items:center;gap:8px;width:100%;
+  padding:5px 9px 5px 14px;border-radius:6px;font-size:12.5px;color:var(--ink-2);
+  border-left:2px solid transparent;
+}
+.tree-q:hover{background:var(--panel-2);color:var(--ink)}
+.tree-q.active{background:var(--surface);color:var(--ink);border-left-color:var(--accent);box-shadow:var(--shadow)}
+.tree-q .st{width:7px;height:7px;border-radius:50%;flex:none}
+.tree-q .txt{flex:1;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-q .rel{font-size:9px;color:var(--accent);font-weight:700;flex:none}
+.sidebar-foot{padding:10px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+
+/* 主内容区 */
+.main{flex:1;min-width:0;overflow-y:auto;position:relative;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+.main::-webkit-scrollbar{width:10px}
+.main::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:5px}
+.main-inner{max-width:1180px;margin:0 auto;padding:26px 28px 60px}
+
+/* 状态栏 */
+.statusbar{
+  display:flex;align-items:center;gap:18px;flex:none;
+  height:27px;padding:0 14px;
+  background:var(--surface);color:var(--ink-3);
+  border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:10.5px;
+}
+.statusbar .sep{color:var(--line-2)}
+.statusbar .right{margin-left:auto;display:flex;gap:14px;align-items:center}
+.statusbar b{color:var(--ink-2);font-weight:600}
+
+/* ============ 通用组件 ============ */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.chip{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;
+}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.bad{background:var(--bad-soft);color:var(--bad)}
+.chip.ghost{background:var(--panel);color:var(--ink-2)}
+.chip.accent{background:var(--accent-soft);color:var(--accent)}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;
+  border:1px solid var(--line-2);background:var(--surface);color:var(--ink);
+  transition:all .13s;
+}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-2);border-color:var(--accent-2)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn.ghost:hover{color:var(--ink);background:var(--panel)}
+.btn.sm{padding:6px 12px;font-size:12px;border-radius:7px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.section-title{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px}
+.section-title h2{font-size:16px;font-weight:700}
+.section-title .sub{font-size:12px;color:var(--ink-3);font-family:var(--mono)}
+.grid{display:grid;gap:14px}
+
+/* 进度条 */
+.progress{height:7px;border-radius:4px;background:var(--panel-2);overflow:hidden}
+.progress>span{display:block;height:100%;border-radius:4px;background:var(--accent);transition:width .4s}
+
+/* 圆环（SVG） */
+.ring{position:relative;width:128px;height:128px}
+.ring svg{transform:rotate(-90deg)}
+.ring .ring-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .ring-num b{font-size:26px;font-family:var(--mono);line-height:1}
+.ring .ring-num span{font-size:10.5px;color:var(--ink-3);margin-top:3px}
+
+/* ============ 视图：总览 ============ */
+.dash-hero{display:grid;grid-template-columns:280px 1fr;gap:18px;margin-bottom:8px}
+.profile-card{padding:20px;display:flex;flex-direction:column;gap:12px}
+.profile-top{display:flex;gap:14px;align-items:center}
+.profile-photo{width:76px;height:92px;object-fit:cover;border-radius:8px;border:2px solid var(--line);flex:none}
+.profile-top h1{font-size:19px;font-weight:900}
+.profile-top .role{font-size:12px;color:var(--accent);font-weight:700;margin-top:2px}
+.profile-meta{font-size:12px;color:var(--ink-2);display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}
+.profile-meta b{color:var(--ink);font-weight:600}
+.profile-tags{display:flex;flex-wrap:wrap;gap:6px}
+.skill-tag{font-size:11px;padding:3px 9px;border-radius:6px;background:var(--panel);color:var(--ink-2);border:1px solid var(--line);font-weight:500}
+.skill-tag.hot{background:var(--accent-soft);color:var(--accent);border-color:var(--line-2)}
+.dash-right{display:flex;flex-direction:column;gap:14px}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.stat-card{padding:16px 18px;display:flex;flex-direction:column;gap:3px}
+.stat-card .lbl{font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:.6px}
+.stat-card .val{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1.2}
+.stat-card .val small{font-size:12px;font-weight:500;color:var(--ink-3);margin-left:2px}
+.stat-card .foot{font-size:11px;color:var(--ink-3)}
+.stat-card.know .val{color:var(--ok)}
+.stat-card.fuzzy .val{color:var(--warn)}
+.stat-card.bad .val{color:var(--bad)}
+.stat-card.todo .val{color:var(--ink)}
+.welcome-line{font-size:13.5px;color:var(--ink-2)}
+.welcome-line b{color:var(--ink)}
+.dash-cols{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;margin-top:14px}
+.progress-card{padding:20px 22px}
+.progress-card h3{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.progress-card h3 svg{width:15px;height:15px;color:var(--accent)}
+.cat-prog{display:flex;flex-direction:column;gap:11px}
+.cat-prog-row{display:flex;flex-direction:column;gap:4px}
+.cat-prog-top{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.cat-prog-top .cname{font-weight:600;flex:1}
+.cat-prog-top .cmeta{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+.cat-prog-top .cmeta b{color:var(--ink-2)}
+.quick-card{padding:20px 22px;display:flex;flex-direction:column;gap:10px}
+.quick-card h3{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.quick-card h3 svg{width:15px;height:15px;color:var(--accent)}
+.quick-item{
+  display:flex;align-items:center;gap:11px;padding:11px 12px;border:1px solid var(--line);
+  border-radius:9px;transition:all .13s;text-align:left;width:100%;
+}
+.quick-item:hover{border-color:var(--accent);box-shadow:var(--shadow);transform:translateY(-1px)}
+.quick-item .qi-icon{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none}
+.quick-item .qi-icon svg{width:17px;height:17px}
+.quick-item .qi-t{font-weight:600;font-size:13px}
+.quick-item .qi-d{font-size:11px;color:var(--ink-3)}
+.quick-item .go{margin-left:auto;color:var(--ink-3)}
+.hint-band{
+  margin-top:14px;padding:12px 16px;border-radius:var(--radius);
+  background:var(--accent-soft);color:var(--ink-2);display:flex;align-items:center;gap:12px;font-size:12.5px;
+  border:1px solid var(--line);
+}
+.hint-band svg{width:16px;height:16px;color:var(--accent);flex:none}
+.hint-band b{color:var(--ink)}
+
+/* ============ 视图：题库 ============ */
+.bank-layout{display:flex;gap:18px;align-items:flex-start}
+.bank-list{flex:1;min-width:0}
+.bank-toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.search-box{
+  flex:1;min-width:200px;display:flex;align-items:center;gap:8px;
+  background:var(--surface);border:1px solid var(--line-2);border-radius:8px;padding:0 12px;height:38px;
+}
+.search-box svg{width:15px;height:15px;color:var(--ink-3);flex:none}
+.search-box input{flex:1;border:none;outline:none;font-size:13px;background:transparent;color:var(--ink)}
+.search-box input::placeholder{color:var(--ink-3)}
+.search-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.bank-rc{align-self:center;font-family:var(--mono);font-size:11px;color:var(--ink-3);white-space:nowrap}
+.qtitle mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding:0 2px;font-weight:700}
+.qitem{
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:13px 16px;background:var(--surface);border:1px solid var(--line);
+  border-radius:9px;margin-bottom:9px;text-align:left;transition:all .13s;
+}
+.qitem:hover{border-color:var(--line-2);box-shadow:var(--shadow);transform:translateY(-1px)}
+.qitem .qidx{font-family:var(--mono);font-size:11px;color:var(--ink-3);flex:none;width:34px}
+.qitem .qmain{flex:1;min-width:0}
+.qitem .qtitle{font-size:13.5px;font-weight:600;line-height:1.45}
+.qitem .qsub{font-size:11.5px;color:var(--ink-3);margin-top:2px;display:flex;gap:8px;align-items:center}
+.qitem .st{width:8px;height:8px;border-radius:50%;flex:none}
+.qitem .chev{color:var(--ink-3)}
+.empty{
+  padding:52px 20px;text-align:center;color:var(--ink-3);font-size:13px;
+  border:1px dashed var(--line-2);border-radius:var(--radius);
+}
+.empty b{display:block;color:var(--ink-2);font-size:14px;margin-bottom:6px}
+
+/* 题目详情（编辑器） */
+.detail{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.detail-tab{
+  display:flex;align-items:center;gap:9px;padding:8px 14px;
+  background:var(--panel);border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:11.5px;color:var(--ink-2);
+}
+.detail-tab .file-dot{width:9px;height:9px;border-radius:2px;background:var(--accent)}
+.detail-tab .path{color:var(--ink-3)}
+.detail-body{padding:20px 22px}
+.detail-q{font-size:16.5px;font-weight:700;line-height:1.55;margin-bottom:6px}
+.detail-rel{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--accent);font-weight:700;margin-bottom:10px}
+.detail-rel svg{width:13px;height:13px}
+.answer-label{
+  display:flex;align-items:center;gap:8px;margin:16px 0 9px;
+  font-size:11px;font-weight:700;letter-spacing:1.4px;color:var(--ink-3);
+}
+.answer-label::after{content:"";flex:1;height:1px;background:var(--line)}
+.answer{font-size:13.5px;color:var(--ink);line-height:1.85}
+.answer p{margin:6px 0}
+.answer ul,.answer ol{margin:6px 0 6px 2px;padding-left:20px;display:flex;flex-direction:column;gap:5px}
+.answer li::marker{color:var(--accent)}
+.answer code{
+  font-family:var(--mono);font-size:12px;background:var(--panel);
+  padding:1px 5px;border-radius:4px;color:var(--accent-2);
+}
+.answer pre{
+  background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:13px 15px;
+  margin:9px 0;overflow-x:auto;font-family:var(--mono);font-size:12.2px;line-height:1.7;
+}
+.answer pre code{background:none;color:inherit;padding:0;font-size:inherit}
+.answer b{font-weight:700}
+.answer .kw{color:var(--accent)}
+.detail-actions{display:flex;gap:9px;flex-wrap:wrap;padding:14px 22px 18px;border-top:1px solid var(--line);background:var(--surface)}
+.mark-btn{
+  display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:8px;
+  font-size:12.5px;font-weight:600;border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);
+}
+.mark-btn:hover{color:var(--ink);border-color:var(--ink-2)}
+.mark-btn.on-ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.mark-btn.on-warn{background:var(--warn);border-color:var(--warn);color:#fff}
+.mark-btn.on-bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.mark-btn.on-fav{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.detail-nav{display:flex;align-items:center;justify-content:space-between;padding:11px 22px;border-top:1px solid var(--line);background:var(--panel);font-size:12px;color:var(--ink-2)}
+.detail-nav .nav-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:7px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.detail-nav .nav-btn:hover{background:var(--panel-2);color:var(--ink)}
+.detail-nav .nav-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ============ 视图：闪卡 ============ */
+.flash-wrap{max-width:1040px;margin:0 auto}
+.flash-config{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.flash-config .fc-label{font-size:12px;color:var(--ink-3);font-weight:600}
+.select{
+  height:36px;padding:0 12px;border:1px solid var(--line-2);border-radius:8px;
+  background:var(--surface);font-size:13px;color:var(--ink);outline:none;
+}
+.flash-card{min-height:330px;display:flex;flex-direction:column}
+.flash-head{
+  display:flex;align-items:center;gap:10px;padding:11px 16px;
+  border-bottom:1px solid var(--line);background:var(--panel);border-radius:var(--radius) var(--radius) 0 0;
+  font-family:var(--mono);font-size:11.5px;color:var(--ink-2);
+}
+.flash-head .fbar{flex:1;height:5px;background:var(--panel-2);border-radius:3px;overflow:hidden}
+.flash-head .fbar>span{display:block;height:100%;background:var(--accent);transition:width .3s}
+.flash-body{flex:1;padding:40px 48px;display:flex;flex-direction:column}
+.flash-q{font-size:19px;font-weight:700;line-height:1.6}
+.flash-hint{margin-top:auto;font-size:11.5px;color:var(--ink-3)}
+.flash-ans{margin-top:18px;border-top:2px dashed var(--line);padding-top:16px;animation:fadeIn .25s}
+.flash-actions{display:flex;gap:10px;justify-content:center;padding:16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.fade-in{animation:fadeIn .22s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.flash-done{text-align:center;padding:40px 30px}
+.flash-done .ring{margin:16px auto}
+.flash-done h3{font-size:17px;margin-bottom:6px}
+.flash-done p{color:var(--ink-2);font-size:13px;margin-bottom:20px}
+
+/* ============ 视图：模拟面试 ============ */
+.mock-wrap{max-width:1100px;margin:0 auto}
+.mock-setup .card{padding:32px 40px}
+.mock-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:16px 0;border-bottom:1px dashed var(--line)}
+.mock-row:last-child{border-bottom:none}
+.mock-row .ml{width:160px;font-size:13.5px;font-weight:600;flex:none}
+.mock-row .mc{display:flex;gap:8px;flex-wrap:wrap;flex:1}
+.opt{
+  padding:9px 18px;border-radius:8px;border:1px solid var(--line-2);font-size:13px;font-weight:600;color:var(--ink-2);background:var(--surface);
+}
+.opt:hover{border-color:var(--ink-2)}
+.opt.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.mock-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:9px;width:100%}
+.cat-opt{
+  display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;
+  font-size:12.5px;font-weight:500;color:var(--ink-2);background:var(--surface);text-align:left;
+}
+.cat-opt:hover{border-color:var(--line-2)}
+.cat-opt.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600}
+.cat-opt .cb{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--line-2);flex:none;display:grid;place-items:center}
+.cat-opt.on .cb{border-color:var(--accent);background:var(--accent)}
+.cat-opt.on .cb::after{content:"";width:7px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translateY(-1px)}
+.mock-timer{
+  display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:9px;background:var(--panel-2);color:var(--ink);
+  border:1px solid var(--line);font-family:var(--mono);font-size:12.5px;
+}
+.mock-timer .tt{color:var(--ink-3)}
+.mock-timer b{font-size:16px;color:var(--accent)}
+.mock-timer .pause{margin-left:auto;color:var(--ink-2);font-size:11px}
+.mock-qbody{flex:1;padding:36px 50px}
+.mock-qno{font-family:var(--mono);font-size:11px;color:var(--ink-3);letter-spacing:1px}
+.mock-q{font-size:19px;font-weight:700;line-height:1.65;margin-top:10px}
+.mock-cats-tag{margin-top:8px}
+.result-card{text-align:center;padding:32px 30px}
+.result-score{font-family:var(--mono);font-size:54px;font-weight:700;color:var(--accent);line-height:1}
+.result-sub{color:var(--ink-2);font-size:13px;margin:8px 0 22px}
+.result-bars{display:flex;flex-direction:column;gap:9px;max-width:520px;margin:0 auto 22px;text-align:left}
+.result-bar{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.result-bar .rb-name{width:150px;text-align:right;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result-bar .progress{flex:1}
+.result-bar .rb-num{width:34px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.suggest{display:flex;flex-direction:column;gap:8px;margin:18px auto 0;max-width:560px;text-align:left}
+.suggest .sg{display:flex;gap:9px;font-size:12.5px;color:var(--ink-2);padding:9px 13px;border-radius:8px;background:var(--panel);align-items:flex-start}
+.suggest .sg svg{width:14px;height:14px;flex:none;margin-top:3px;color:var(--warn)}
+
+/* ============ 视图：我的 ============ */
+.mine-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.mine-tab{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;color:var(--ink-2);background:var(--surface);border:1px solid var(--line)}
+.mine-tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.mock-hist{display:flex;flex-direction:column;gap:9px}
+.mock-row-item{
+  display:flex;align-items:center;gap:14px;padding:13px 16px;background:var(--surface);
+  border:1px solid var(--line);border-radius:9px;
+}
+.mock-row-item .mdate{font-family:var(--mono);font-size:11px;color:var(--ink-3);flex:none}
+.mock-row-item .mstat{display:flex;gap:10px;flex:1;flex-wrap:wrap}
+.mock-row-item .mstat .chip{font-size:10.5px}
+.mock-row-item .mscore{margin-left:auto;font-family:var(--mono);font-size:16px;font-weight:700}
+.hist-empty{padding:44px;text-align:center;color:var(--ink-3);font-size:13px;border:1px dashed var(--line-2);border-radius:var(--radius)}
+
+/* 移动端 */
+.sidebar-toggle{display:none}
+.mask{display:none}
+@media (max-width:900px){
+  .tb-nav button span{display:none}
+  .tb-nav button{padding:7px 10px}
+  .tb-heat{display:none}
+  .sidebar{position:fixed;top:46px;bottom:27px;left:0;z-index:30;margin-left:-268px;box-shadow:var(--shadow)}
+  .sidebar.open{margin-left:0}
+  .sidebar-toggle{display:grid;place-items:center;width:32px;height:32px;border-radius:7px;color:var(--ink-2)}
+  .sidebar-toggle:hover{background:var(--panel-2);color:var(--ink)}
+  .mask{position:fixed;inset:46px 0 27px;background:rgba(31,42,36,.28);z-index:20;backdrop-filter:blur(1px)}
+  .mask.show{display:block}
+  .main-inner{padding:18px 14px 50px}
+  .dash-hero{grid-template-columns:1fr}
+  .dash-cols{grid-template-columns:1fr}
+  .stat-row{grid-template-columns:repeat(2,1fr)}
+  .bank-layout{flex-direction:column}
+  .flash-body{padding:24px 20px}
+  .mock-qbody{padding:22px 20px}
+  .detail-body{padding:16px}
+}
+@media (max-width:560px){
+  .stat-row{grid-template-columns:repeat(2,1fr)}
+  .tb-brand small{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 标题栏 -->
+  <header class="titlebar">
+    <button class="sidebar-toggle" data-action="toggle-sidebar" aria-label="目录">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="tb-dots"><i></i><i></i><i></i></div>
+    <div class="tb-brand">
+      <span class="logo">J</span>
+      BaguWen.IDE<small>Java 八股面试工作台 · 基于简历定制</small>
+    </div>
+    <nav class="tb-nav" id="topNav">
+      <button data-route="#/dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>总览</span></button>
+      <button data-route="#/bank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>题库</span></button>
+      <button data-route="#/flash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg><span>闪卡刷题</span></button>
+      <button data-route="#/mock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span>模拟面试</span></button>
+      <button data-route="#/mine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>我的</span></button>
+    </nav>
+    <div class="tb-right">
+      <div class="tb-heat"><span class="dot"></span>今日已刷 <b id="heatToday">0</b> 题 · 掌握率 <b id="heatRate">0%</b></div>
+    </div>
+  </header>
+
+  <!-- 工作区 -->
+  <div class="workspace">
+    <div class="mask" id="mask"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-head"><span>PROJECT · 八股题库</span><span class="cnt" id="treeTotal"></span></div>
+      <nav class="tree" id="tree"></nav>
+      <div class="sidebar-foot" id="treeFoot">// 选择分类，开始你的面试冲刺</div>
+    </aside>
+    <main class="main"><div class="main-inner" id="app"></div></main>
+  </div>
+
+  <!-- 状态栏 -->
+  <footer class="statusbar">
+    <span id="stRoute">dashboard</span>
+    <span class="sep">|</span>
+    <span>总题 <b id="stTotal">0</b></span>
+    <span class="sep">|</span>
+    <span>已掌握 <b id="stKnow">0</b></span>
+    <span class="sep">|</span>
+    <span>模糊 <b id="stFuzzy">0</b></span>
+    <span class="sep">|</span>
+    <span>待巩固 <b id="stBad">0</b></span>
+    <span class="sep">|</span>
+    <span>收藏 <b id="stFav">0</b></span>
+    <div class="right">
+      <span>简历：易龙宇 · Java 开发工程师</span>
+      <span class="sep">|</span>
+      <span id="stDate"></span>
+    </div>
+  </footer>
+</div>
+
+<script>
+/* ================= 题库数据（由构建脚本注入） ================= */
+const QUESTIONS = [{"id":"java-01","cat":"java","rel":true,"q":"JDK、JRE、JVM 三者之间的关系是什么？","a":"· JVM：Java 虚拟机，负责把字节码翻译成机器码并在特定平台执行，是跨平台的基础。\n· JRE：Java 运行环境 = JVM + 核心类库，只负责运行 Java 程序。\n· JDK：Java 开发工具包 = JRE + 编译器等开发工具（javac、jdb 等）。\n· 关系：JDK 包含 JRE，JRE 包含 JVM。开发需要 JDK，部署运行只需要 JRE（含 JVM）。"},{"id":"java-02","cat":"java","q":"Java 有哪些基本数据类型？对应的包装类分别是什么？","a":"· 整型：`byte`、`short`、`int`（默认）、`long`\n· 浮点型：`float`、`double`（默认）\n· 布尔型：`boolean`\n· 字符型：`char`\n· 包装类：`Byte`、`Short`、`Integer`、`Long`、`Float`、`Double`、`Boolean`、`Character`"},{"id":"java-03","cat":"java","q":"基本类型和包装类型的区别？","a":"· 存储：基本类型直接存值，在栈上分配、固定大小；包装类型是对象，在堆上创建，含额外信息、占用更多内存。\n· 默认值：基本类型有默认值（int=0 等），包装类型默认 `null`。\n· 用途：泛型只能用包装类型；集合中必须用包装类型。\n· 性能：基本类型更快；包装类型有自动装箱/拆箱的开销。"},{"id":"java-04","cat":"java","q":"什么是自动装箱和自动拆箱？","a":"· 自动装箱：基本类型 → 对应包装类型，如 `Integer i = 42;`，编译器调用 `Integer.valueOf()`。\n· 自动拆箱：包装类型 → 基本类型，如 `int n = i;`，编译器调用 `intValue()`。\n· 注意：`Integer` 缓存范围 -128~127，`==` 比较该范围内相等，范围外需用 `equals()`。\n· 拆箱遇到 `null` 会抛 `NullPointerException`。"},{"id":"java-05","cat":"java","q":"面向对象的三大特征是什么？","a":"· **封装**：把数据和行为组合在一个类中，对外隐藏实现细节，通过访问修饰符控制可见性，保证数据私有。\n· **继承**：基于已有类创建新类，复用父类方法并可扩展；Java 单继承（类），接口可多实现。\n· **多态**：同一操作作用于不同对象产生不同行为，由重写 + 父类引用指向子类对象实现，运行时动态绑定。"},{"id":"java-06","cat":"java","q":"说一说你对多态的理解（编译时多态和运行时多态的区别）。","a":"· 多态：允许父类类型的变量引用子类类型的对象，调用被重写方法时根据**实际对象类型**决定执行哪个版本。\n· 编译时多态（静态多态）：方法**重载**，编译期根据参数个数/类型决定调用哪个方法。\n· 运行时多态（动态多态）：方法**重写** + 向上转型，JVM 在运行期动态绑定。\n· 前提条件：继承（或实现接口）、方法重写、父类引用指向子类对象。"},{"id":"java-07","cat":"java","q":"接口和抽象类有什么区别？","a":"· 关键字：抽象类用 `abstract class`（单继承）；接口用 `interface`（可多实现）。\n· 成员：抽象类可有构造器、实例字段、具体方法；接口成员默认 `public static final` 常量，方法默认抽象（JDK8 后可有 `default`/`static` 方法）。\n· 语义：抽象类是 **is-a**（模板/基类），接口是 **can-do**（能力契约）。\n· 选择：有公共状态或构造逻辑用抽象类；强调契约、多实现用接口。"},{"id":"java-08","cat":"java","q":"深拷贝和浅拷贝有什么区别？","a":"· 浅拷贝：只复制对象本身（含基本类型字段），**引用类型字段仍指向同一对象**，`Object.clone()` 默认是浅拷贝。\n· 深拷贝：连同引用对象一起复制，得到完全独立的副本。\n· 实现：重写 `clone()` 并深拷贝字段、序列化/反序列化、手动 new + set。\n· 注意：`clone()` 需实现 `Cloneable` 接口，否则抛 `CloneNotSupportedException`。"},{"id":"java-09","cat":"java","q":"`==` 和 `equals()` 的区别？","a":"· `==`：比较**引用地址**（基本类型比较值，引用类型比较是否同一对象）。\n· `equals()`：Object 默认实现等同 `==`；`String`、包装类等重写后比较**内容**。\n· 使用：比较内容用 `equals()`，并先判空（`Objects.equals(a,b)` 更安全）。"},{"id":"java-10","cat":"java","q":"为什么要同时重写 `hashCode()` 和 `equals()`？","a":"· 约定：两个对象 `equals()` 相等，则 `hashCode()` 必须相等；hashCode 相等不代表 equals 相等（哈希冲突）。\n· 原因：`HashMap`/`HashSet` 先算 hashCode 定位桶，再在桶内用 equals 确认，只重写一个会导致元素查不到或重复。\n· 若 equals 相同而 hashCode 不同，对象会被放进不同桶，破坏集合语义。"},{"id":"java-11","cat":"java","q":"String 为什么是不可变的？StringBuffer 和 StringBuilder 的区别？","a":"· String 不可变：字段 `final char[]`（JDK9 后 `byte[]`）+ 私有，无修改方法；不可变带来**线程安全、字符串常量池复用、hash 缓存**等好处。\n· 区别：`StringBuilder` 非线程安全、性能高；`StringBuffer` 方法加 `synchronized`、线程安全但稍慢。\n· 使用：单线程拼接用 `StringBuilder`，多线程共享用 `StringBuffer`。"},{"id":"java-12","cat":"java","q":"`new String(\"abc\")` 和 `String a = \"abc\"` 有什么区别？","a":"· `\"abc\"`：先去**字符串常量池**找，没有则创建并放入常量池，多次创建指向同一对象。\n· `new String(\"abc\")`：在**堆**上新建对象，常量池中仍可能有一个 \"abc\"（若不存在）。\n· 结果：两者引用不同（`==` 为 false），内容相同（`equals` 为 true）。"},{"id":"java-13","cat":"java","q":"Exception 和 Error 有什么区别？什么是受检异常和运行时异常？","a":"· `Error`：JVM 层面的严重问题（`OOM`、`StackOverflow`），程序无法处理，不该捕获。\n· `Exception`：程序可处理的问题，分两类：\n· 受检异常（Checked）：编译器强制处理（try-catch 或 throws），如 `IOException`、`SQLException`。\n· 运行时异常（Unchecked）：继承 `RuntimeException`，编译器不强制，如 `NullPointerException`、`IndexOutOfBounds`。\n· 使用原则：可恢复且调用方应处理的用受检异常，程序缺陷用运行时异常。"},{"id":"java-14","cat":"java","rel":true,"q":"反射机制是什么？实际项目中有哪些应用场景？","a":"· 反射：运行时动态获取类的完整信息（构造器、方法、字段、注解）并操作对象的能力，入口是 `Class` 类（`Class.forName` / `.class` / `getClass()`）。\n· 应用场景：\n· Spring IoC 实例化 Bean、属性注入（`@Autowired`）；\n· Spring AOP 的 JDK 动态代理；\n· MyBatis Mapper 接口动态代理绑定 SQL；\n· 注解解析（如 `@RequestMapping` 路由注册）；\n· 框架、ORM、序列化工具等通用化编码。\n· 缺点：性能开销、破坏封装、安全问题，日常业务代码慎用。"},{"id":"java-15","cat":"java","rel":true,"q":"什么是注解？如何自定义一个注解？","a":"· 注解：Java 5 引入的元数据机制，本身不改变逻辑，通过**反射或编译期处理**被读取使用。\n· 元注解：`@Target`（作用位置）、`@Retention`（生命周期：SOURCE/CLASS/RUNTIME）、`@Documented`、`@Inherited`。\n· 自定义示例：`@Target(ElementType.METHOD) @Retention(RetentionPolicy.RUNTIME) public @interface Log {}`\n· 使用：配合反射读取注解 + 动态代理/AOP 实现切面逻辑（如日志、鉴权、限流）。"},{"id":"java-16","cat":"java","q":"`final`、`finally`、`finalize` 的区别？","a":"· `final`：修饰类（不可继承）、方法（不可重写）、变量（不可重新赋值；引用类型指引用不可变）。\n· `finally`：异常处理块，无论是否发生异常都会执行（用于释放资源）；`return` 前也会先执行 finally。\n· `finalize()`：Object 的方法，GC 回收前回调，JDK9 已标记废弃，资源清理用 try-with-resources。"},{"id":"java-17","cat":"java","q":"Java 是值传递还是引用传递？","a":"· Java 只有**值传递**：方法参数传的是值的副本。\n· 基本类型：传值的拷贝，方法内修改不影响外部。\n· 引用类型：传的是**引用的拷贝**（即地址值），方法内修改对象属性会生效，但重新赋值参数不会影响外部引用。"},{"id":"col-01","cat":"collection","q":"Java 集合框架的整体结构是怎样的？","a":"· 两大顶层接口：`Collection` 和 `Map`。\n· `Collection` 派生出 `List`（有序可重复）、`Set`（不可重复）、`Queue`（队列）。\n· 常用实现：List → `ArrayList`/`LinkedList`；Set → `HashSet`/`LinkedHashSet`/`TreeSet`；Queue → `ArrayDeque`/`PriorityQueue`/`LinkedList`；Map → `HashMap`/`LinkedHashMap`/`TreeMap`/`Hashtable`/`ConcurrentHashMap`。"},{"id":"col-02","cat":"collection","q":"有哪些集合是线程安全的？哪些不是？","a":"· 线程安全：`Vector`、`Hashtable`（老 API，方法加 synchronized）、`ConcurrentHashMap`、`CopyOnWriteArrayList`、`CopyOnWriteArraySet`、`ConcurrentLinkedQueue`、`BlockingQueue` 系列。\n· 线程不安全：`ArrayList`、`LinkedList`、`HashSet`、`HashMap`、`TreeMap`、`StringBuilder` 等。\n· 建议：高并发优先用 JUC 并发容器，避免使用 `Hashtable`/`Vector`（锁粒度大、吞吐低）。"},{"id":"col-03","cat":"collection","q":"ArrayList 和 Array（数组）有什么区别？","a":"· 数组：定长，创建后长度不可变，可存基本类型，没有泛型。\n· ArrayList：动态数组，自动扩容，只能存对象（自动装箱），提供丰富的 API（增删改查、迭代）。\n· 转换：`list.toArray()`；`Arrays.asList(arr)`（返回定长视图，不能增删）。"},{"id":"col-04","cat":"collection","q":"ArrayList 与 LinkedList 的区别？","a":"· 底层：ArrayList 动态数组；LinkedList 双向链表。\n· 查询：ArrayList 随机访问 O(1)，LinkedList 按下标 O(n/2)。\n· 插入删除：ArrayList 尾部 O(1)、中间 O(n)（搬移）；LinkedList 头尾 O(1)、中间需先定位 O(n)。\n· 内存：ArrayList 连续空间；LinkedList 每个节点额外存前后指针，空间占用大。\n· 使用：频繁随机访问用 ArrayList；频繁头尾增删用 LinkedList（或 ArrayDeque）。"},{"id":"col-05","cat":"collection","q":"ArrayList 的扩容机制是怎样的？","a":"· 默认初始容量 10（懒加载，首次 add 时才创建）。\n· 扩容：`add` 时容量不足，扩容为原来的 **1.5 倍**（`oldCapacity + (oldCapacity >> 1)`）。\n· 实现：`Arrays.copyOf` 把原数组拷贝到新数组（System.arraycopy）。\n· 优化：已知数据量时可指定初始容量或 `ensureCapacity()`，减少扩容拷贝次数。"},{"id":"col-06","cat":"collection","rel":true,"q":"HashMap 的底层实现原理（JDK 8）？","a":"· 数据结构：**数组 + 链表 + 红黑树**（JDK8 引入树化）。\n· 数组的每个位置叫桶（bucket），存链表头或树根。\n· put 流程：计算 key 的 hashCode → 二次扰动 `(h ^ (h >>> 16))` → `(n-1) & hash` 定位桶。\n· 冲突解决：链地址法（链表）→ 链表长度 ≥ 8 且数组长度 ≥ 64 时转红黑树；树退化为链表阈值 6。\n· 默认参数：容量 16、加载因子 0.75、树化阈值 8。"},{"id":"col-07","cat":"collection","q":"HashMap 的 put 过程是怎样的？","a":"1. 判断 table 是否为空，为空先 `resize()` 扩容初始化。\n2. 计算 key 的 hash 并定位桶下标。\n3. 桶为空：直接 new Node 插入。\n4. 桶非空：\n· 首节点 key 相同 → 覆盖 value；\n· 是红黑树 → 树插入；\n· 是链表 → 遍历，key 相同则覆盖，否则尾插（JDK8 尾插法）；链表长度 ≥ 8 转红黑树。\n5. 插入后 `size > threshold`（容量×0.75）→ 扩容。"},{"id":"col-08","cat":"collection","q":"HashMap 的扩容机制？为什么 JDK8 扩容后元素位置要么不变要么 +oldCap？","a":"· 触发：`size > capacity × loadFactor`（默认 0.75）。\n· 过程：容量翻倍（16→32→…），创建新数组，重新 hash 迁移。\n· 优化：JDK8 利用扩容后 `hash & (newCap-1)` 与 `hash & (oldCap-1)` 的差别——多出来的一位是 0 则**下标不变**，是 1 则**下标 + oldCap**，避免全部 rehash。\n· 同时 JDK8 改为**尾插法**，避免 JDK7 头插法并发扩容产生环形链表死循环。"},{"id":"col-09","cat":"collection","q":"JDK7 和 JDK8 的 HashMap 有什么区别？","a":"· 数据结构：JDK7 数组+链表；JDK8 数组+链表+红黑树。\n· 插入方式：JDK7 头插法；JDK8 尾插法（解决并发扩容环形链表）。\n· 扩容迁移：JDK7 全部 rehash；JDK8 根据高位判断原位或 +oldCap。\n· hash 函数：JDK8 简化扰动 `h ^ (h>>>16)`，JDK7 做 4 次扰动。\n· 其他：JDK8 引入树化/退化阈值、`resize` 拆分优化等。"},{"id":"col-10","cat":"collection","q":"HashMap 为什么线程不安全？如何实现线程安全？","a":"· 不安全原因：\n· 并发 put 可能**覆盖丢失数据**；\n· 并发扩容时多线程同时 rehash，JDK7 头插法可能形成**环形链表**导致死循环（JDK8 尾插已修复但仍丢数据）；\n· size 计数非原子。\n· 线程安全方案：\n· `Hashtable`（整表加锁，不推荐）；\n· `Collections.synchronizedMap()`（包装加锁）；\n· **`ConcurrentHashMap`**（推荐，分段锁/CAS+synchronized）。"},{"id":"col-11","cat":"collection","q":"HashMap 如何解决哈希冲突？为什么要转红黑树？","a":"· 解决：**链地址法**——冲突元素挂在同一桶的链表上。\n· 转树：链表长度 ≥ 8 且数组 ≥ 64 时转为红黑树，查询从 O(n) 降到 O(log n)，防止极端 hash 冲突下性能退化。\n· 退化：扩容后或删除使树节点 ≤ 6 时转回链表（避免树化开销）。\n· 阈值 8 的选择：泊松分布下链表长度到 8 的概率极低（约千万分之六），兼顾性能与空间。"},{"id":"col-12","cat":"collection","rel":true,"q":"ConcurrentHashMap 的实现原理（JDK7 与 JDK8 的区别）？","a":"· JDK7：**分段锁**——数组分为多个 `Segment`（继承 ReentrantLock），put 只锁对应段，提高并发度；`size()` 需统计所有段。\n· JDK8：放弃分段锁，改用 **CAS + synchronized**：\n· 空桶用 CAS 插入；\n· 桶非空用 synchronized 锁住桶头节点；\n· 锁粒度细化到单个桶，并发度更高；\n· 引入红黑树优化。\n· 注意：`key`/`value` 均不允许 `null`（区别于 HashMap，避免二义性）。"},{"id":"col-13","cat":"collection","q":"HashMap 和 Hashtable 的区别？","a":"· 线程安全：Hashtable 方法加 synchronized；HashMap 不安全。\n· null：HashMap 允许一个 null key 和多个 null value；Hashtable 不允许。\n· 初始容量与扩容：HashMap 默认 16、扩容翻倍；Hashtable 默认 11、扩容 2n+1。\n· 底层：Hashtable 只有数组+链表；HashMap JDK8 有红黑树优化。"},{"id":"col-14","cat":"collection","q":"HashSet、LinkedHashSet、TreeSet 的区别？","a":"· HashSet：基于 HashMap，无序、O(1) 增删查，允许 null。\n· LinkedHashSet：在 HashSet 基础上维护双向链表，**迭代顺序 = 插入顺序**。\n· TreeSet：基于红黑树（TreeMap），**按元素自然顺序/比较器排序**，支持范围查询，不允许 null。\n· 选择：去重且无序用 HashSet；要插入序用 LinkedHashSet；要排序用 TreeSet。"},{"id":"col-15","cat":"collection","q":"Map 有哪几种遍历方式？","a":"1. `keySet()` 遍历 key，再 `get(key)`（效率低，二次查找）。\n2. `entrySet()` 遍历键值对（推荐，一次取到 key+value）。\n3. `values()` 只遍历 value。\n4. JDK8：`forEach((k,v)->{})`。\n5. 迭代器 `Iterator<Map.Entry>`。\n6. `keySet().iterator()` / Stream API。"},{"id":"col-16","cat":"collection","q":"CopyOnWriteArrayList 的原理和适用场景？","a":"· 原理：读不加锁；写操作先加锁（ReentrantLock），**复制一份新数组**在新数组上修改，再通过 volatile 引用替换旧数组。\n· 特点：读写分离，读多写少时性能高；只能保证**最终一致性**，不能实时一致；写会复制整数组，内存开销大。\n· 适用：读多写少的场景（黑白名单、配置缓存）。"},{"id":"col-17","cat":"collection","q":"HashMap 的容量为什么必须是 2 的幂次方？","a":"· 定位桶用 `(n-1) & hash` 替代取模运算，只有 n 为 2 的幂时 `(n-1)` 的低位全是 1，`&` 结果等价于 `hash % n` 且分布均匀。\n· 非 2 的幂时 `n-1` 有 0 位，某些下标永远映射不到，浪费空间、冲突增加。\n· 扩容翻倍后 `n-1` 多一位 1，与高位 hash 相与即可判断元素是否移位，支持 JDK8 的免 rehash 优化。"},{"id":"jvm-01","cat":"jvm","q":"请介绍一下 JVM 的内存结构（运行时数据区）。","a":"· 线程私有：\n· **程序计数器**：记录当前线程执行字节码的地址，唯一不会 OOM 的区域。\n· **Java 虚拟机栈**：每个方法对应一个栈帧（局部变量表、操作数栈、动态链接、方法出口），栈溢出抛 StackOverflowError。\n· **本地方法栈**：为 native 方法服务。\n· 线程共享：\n· **堆**：对象实例与数组，GC 主要区域。\n· **方法区**：类型信息、常量、静态变量、JIT 编译产物（JDK8 后为元空间 Metaspace）。"},{"id":"jvm-02","cat":"jvm","q":"运行时数据区哪些是线程共享的，哪些是私有的？","a":"· 共享：**堆**、**方法区（元空间）**、运行时常量池。\n· 私有：**程序计数器**、**虚拟机栈**、**本地方法栈**。\n· 记忆：每个线程独享\"栈、计数器\"；对象和类元数据全局共享。"},{"id":"jvm-03","cat":"jvm","q":"堆和栈的区别？","a":"· 分配：栈在编译期确定大小（方法栈帧），堆运行期动态分配。\n· 管理：栈随方法调用自动入栈出栈（自动释放）；堆由 GC 管理。\n· 速度：栈分配只移动指针，远快于堆。\n· 共享：栈线程私有，堆线程共享。\n· 溢出：栈溢 StackOverflowError，堆满 OOM（java heap space）。"},{"id":"jvm-04","cat":"jvm","q":"对象的创建过程（五步）？","a":"1. **类加载检查**：new 指令检查常量池能否定位到类符号引用，类未加载则先加载、解析、初始化。\n2. **分配内存**：内存规整用指针碰撞，不规整用空闲列表；并发用 CAS+失败重试 或 TLAB 本地线程缓冲。\n3. **初始化零值**：对象头外字段全部置 0/null，保证不赋值也能访问。\n4. **设置对象头**：写 Mark Word（哈希码、GC 分代年龄、锁状态）与类型指针。\n5. **执行构造方法**：按程序员意图初始化。"},{"id":"jvm-05","cat":"jvm","q":"对象的内存布局由哪几部分组成？","a":"· **对象头**：\n· Mark Word：哈希码、GC 分代年龄、锁状态标志、偏向线程 ID 等（动态结构）；\n· 类型指针：指向方法区的类元数据（数组还有长度字段）。\n· **实例数据**：对象真正存储的字段内容（含父类继承的）。\n· **对齐填充**：保证对象大小是 8 字节的整数倍（占位，非必然存在）。"},{"id":"jvm-06","cat":"jvm","q":"对象的访问定位有哪两种方式？优缺点？","a":"· **句柄方式**：引用存句柄池地址，句柄内含实例数据指针和类型数据指针；GC 移动对象时只需改句柄指针，引用稳定。\n· **直接指针方式**（HotSpot 默认）：引用直接存对象地址；少一次指针定位，**访问速度快**。\n· 权衡：句柄稳定但多一次间接访问；直接指针快但 GC 移动对象需修正引用。"},{"id":"jvm-07","cat":"jvm","q":"类的加载过程分为哪几个阶段？","a":"· 生命周期：**加载 → 验证 → 准备 → 解析 → 初始化 → 使用 → 卸载**（验证/准备/解析合称连接）。\n· 加载：通过全限定名获取二进制字节流，转为方法区运行时数据结构，生成 `Class` 对象。\n· 验证：文件格式、元数据、字节码、符号引用验证。\n· 准备：为静态变量分配内存并置零值（final 常量直接赋值）。\n· 解析：符号引用 → 直接引用。\n· 初始化：执行 `<clinit>()`，静态变量赋值 + 静态代码块（主动使用才触发）。"},{"id":"jvm-08","cat":"jvm","rel":true,"q":"什么是双亲委派模型？为什么要用它？如何打破？","a":"· 模型：类加载请求**自底向上**委派——先交给父加载器，父加载器无法完成才由子加载器加载。\n· 顺序：启动类加载器（Bootstrap，rt.jar）→ 扩展类加载器（Ext）→ 应用类加载器（ClassPath）→ 自定义加载器。\n· 好处：保证核心类库只被加载一次且一致（如 `java.lang.String` 不会被篡改），避免类重复加载。\n· 打破：重写 `loadClass()` 不先委派（如 Tomcat 的 WebAppClassLoader 优先加载应用类；SPI 用线程上下文类加载器如 JDBC DriverManager）。"},{"id":"jvm-09","cat":"jvm","q":"什么是 OOM？常见的内存溢出场景？","a":"· OOM：Out Of Memory，JVM 无足够内存分配且 GC 也无法回收时抛出的 Error。\n· 常见场景：\n· **堆溢出**（`java heap space`）：对象过多/泄漏，调大 -Xmx 或排查泄漏；\n· **栈溢出**（`StackOverflowError`）：递归过深；\n· 方法区/元空间溢出：动态生成类过多（反射、CGLIB、热部署）；\n· **直接内存溢出**（NIO 分配 DirectByteBuffer）。"},{"id":"jvm-10","cat":"jvm","q":"常见的垃圾回收算法有哪些？","a":"· **标记-清除**：标记存活对象，清除其余；有内存碎片、效率随对象增多下降。\n· **标记-复制**：把内存分两块，只使用一块，GC 时存活对象复制到另一块再整体清除；无碎片、浪费一半空间（Eden:Survivor=8:1 优化）。\n· **标记-整理**：存活对象向一端移动再清理边界外内存；无碎片、有移动开销。\n· **分代收集**：新生代用复制（对象朝生夕死），老年代用标记-清除/整理。"},{"id":"jvm-11","cat":"jvm","q":"什么是 GC Roots？哪些对象可作为 GC Roots？","a":"· GC Roots：可达性分析中作为**根起点**的对象集合，从根出发不可达的对象判定为可回收。\n· 可作根的对象：\n· 虚拟机栈/本地方法栈中引用的对象（局部变量、参数）；\n· 方法区中**静态属性**引用的对象、**常量**引用的对象；\n· 被 `synchronized` 持有的对象；\n· JNI 引用的对象（全局 JNI 引用）。"},{"id":"jvm-12","cat":"jvm","q":"G1 收集器的基本原理？","a":"· G1：Garbage-First，把堆划分为多个大小相等的 **Region**（Eden/Survivor/Old/Humongous），角色动态变化。\n· 特点：不再物理分代，整体标记-整理、Region 内复制；可预测的**停顿时间目标**（-XX:MaxGCPauseMillis）。\n· 回收阶段：初始标记（STW）→ 并发标记 → 最终标记（STW）→ 筛选回收（按回收价值排序，选择性回收 Region）。\n· 适用：JDK9+ 默认收集器，适合大堆、需要控制停顿的场景。"},{"id":"jvm-13","cat":"jvm","q":"强引用、软引用、弱引用、虚引用的区别？","a":"· **强引用**：`new` 的对象，只要可达 GC 绝不回收，OOM 也不回收。\n· **软引用**：`SoftReference`，内存充足不回收，即将 OOM 时回收（适合图片缓存）。\n· **弱引用**：`WeakReference`，下次 GC 必回收（`ThreadLocal` 的 key 使用）。\n· **虚引用**：`PhantomReference`，不能通过它获取对象，仅用于跟踪对象被回收（配合引用队列做堆外内存回收通知）。"},{"id":"jvm-14","cat":"jvm","rel":true,"q":"什么是解释器？什么是 JIT 编译器？为什么两者并存？","a":"· 解释器：逐条解释执行字节码，启动快但执行慢。\n· JIT：运行时把**热点代码**（多次调用的方法/循环）编译成机器码缓存，执行快但编译有开销。\n· 并存原因：启动阶段用解释器快速响应；运行中通过**热点探测**（计数）触发 JIT 编译热点方法，二者互补，兼顾启动速度与长期性能（分层编译 C1/C2）。"},{"id":"jvm-15","cat":"jvm","q":"Java 有哪几种类加载器？","a":"· **启动类加载器（Bootstrap）**：C++ 实现，加载 `JAVA_HOME/lib` 核心类库（rt.jar），无父加载器。\n· **扩展类加载器（Ext）**：加载 `lib/ext` 或 java.ext.dirs 指定路径类库。\n· **应用类加载器（App）**：加载 ClassPath 上用户类，默认上下文加载器。\n· **自定义类加载器**：继承 ClassLoader，实现热部署、类隔离等。"},{"id":"con-01","cat":"concurrency","q":"进程和线程的区别？Java 创建线程有哪几种方式？","a":"· 进程：系统资源分配的基本单位；线程：CPU 调度的最小单位，进程内共享内存与资源。线程创建/切换成本远低于进程。\n· Java 创建线程：\n1. 继承 `Thread` 重写 `run()`；\n2. 实现 `Runnable`；\n3. 实现 `Callable`（有返回值）+ `FutureTask`；\n4. 线程池 `ExecutorService`（本质仍是 Runnable/Callable）。\n· 推荐实现接口方式（解耦、可扩展、避免单继承限制）。"},{"id":"con-02","cat":"concurrency","q":"线程的生命周期有哪些状态？","a":"· **NEW**：创建未 start。\n· **RUNNABLE**：就绪 + 运行（等待 CPU）。\n· **BLOCKED**：等待进入 synchronized 锁。\n· **WAITING**：wait/join/park 等待被唤醒。\n· **TIMED_WAITING**：sleep/wait(timeout) 超时等待。\n· **TERMINATED**：执行完或异常退出。"},{"id":"con-03","cat":"concurrency","q":"`start()` 和 `run()` 的区别？可以直接调用 `run()` 吗？","a":"· `run()`：线程的执行体，直接调用**不会创建新线程**，在当前线程同步执行。\n· `start()`：创建新线程并使其进入就绪态，由 JVM 调度在新线程中执行 `run()`。\n· 结论：不能直接调 `run()` 来实现多线程；同一个线程 `start()` 只能调一次。"},{"id":"con-04","cat":"concurrency","q":"什么是 Java 内存模型（JMM）？","a":"· JMM：抽象出**主内存 + 线程工作内存**，规定变量读写规则，屏蔽硬件差异，保证跨平台一致的内存可见性。\n· 主内存：所有线程共享（对应堆中实例数据）；工作内存：线程私有（缓存、寄存器、写缓冲区的抽象）。\n· 交互：线程从主内存拷贝变量到工作内存操作，再写回；不刷新/不失效就会产生可见性问题。\n· 核心保证：**原子性、可见性、有序性**，通过 volatile/synchronized/final + happens-before 规则实现。"},{"id":"con-05","cat":"concurrency","q":"谈谈你对 `volatile` 关键字的理解。","a":"· volatile 是 JVM 提供的轻量级同步机制，只能修饰变量，具有：\n· **可见性**：写 volatile 变量会把工作内存刷新到主内存；读 volatile 会把本地内存置为无效，从主内存重新读。\n· **禁止指令重排序**：通过插入内存屏障（StoreStore/StoreLoad/LoadLoad/LoadStore）限制重排。\n· **不保证原子性**：`volatile++` 这类复合操作不安全（需 CAS 或 synchronized）。\n· 典型场景：状态标志位、DCL 单例中的 instance（防止指令重排）。"},{"id":"con-06","cat":"concurrency","q":"`volatile` 和 `synchronized` 的区别？","a":"· 粒度：volatile 修饰变量；synchronized 修饰方法/代码块/类。\n· 特性：volatile 保证可见性与有序性，**不保证原子性**；synchronized 同时保证**原子性、可见性、有序性**（锁）。\n· 性能：volatile 无锁开销，更轻量；synchronized 有锁获取/释放（JDK6 后有锁升级优化）。\n· 使用：单变量状态用 volatile；复合操作、临界区用 synchronized / Lock。"},{"id":"con-07","cat":"concurrency","q":"`synchronized` 的底层原理？什么是锁升级？","a":"· 原理：每个 Java 对象头 Mark Word 中存锁状态；`monitorenter`/`monitorexit` 指令获取/释放**内置锁（Monitor）**。\n· 锁升级（JDK6 优化）：**无锁 → 偏向锁 → 轻量级锁 → 重量级锁**，只能升级不能降级。\n· 偏向锁：单线程反复获取，记录线程 ID，无需 CAS；\n· 轻量级锁：出现竞争时，用 CAS 自旋抢锁，不阻塞；\n· 重量级锁：自旋超过阈值仍失败，膨胀为 Monitor，线程阻塞（涉及用户态/内核态切换）。\n· 好处：根据竞争激烈程度自适应，兼顾性能。"},{"id":"con-08","cat":"concurrency","q":"Java 中有哪些锁？（锁的分类）","a":"· 公平锁/非公平锁：按申请顺序分配（ReentrantLock 默认非公平，吞吐高）。\n· 可重入锁：同一线程可重复获取（synchronized、ReentrantLock 都是）。\n· 独享锁/共享锁：独占（synchronized、写锁）vs 共享（读锁）。\n· 悲观锁/乐观锁：先加锁 vs CAS 无锁编程。\n· 分段锁：ConcurrentHashMap JDK7 的设计。\n· 偏向锁/轻量级锁/重量级锁：synchronized 的锁状态。\n· 自旋锁：CAS 循环尝试，减少上下文切换、消耗 CPU。"},{"id":"con-09","cat":"concurrency","q":"ReentrantLock 和 synchronized 的区别？","a":"· 实现：synchronized 是 JVM 关键字（Monitor）；ReentrantLock 是 JUC 类（AQS）。\n· 公平性：ReentrantLock 可配公平/非公平；synchronized 只能非公平。\n· 灵活性：ReentrantLock 支持**可中断获取锁、定时/轮询获取（tryLock）、多条件（Condition）**。\n· 释放：synchronized 自动释放；ReentrantLock 必须手动 `unlock()`（finally 中）。\n· 性能：JDK6 后两者差距很小；高并发复杂场景优先 ReentrantLock。"},{"id":"con-10","cat":"concurrency","q":"CAS 是什么？有什么缺点？什么是 ABA 问题？","a":"· CAS（Compare And Swap）：比较并交换，比较内存值与预期值，相等则更新为新值，原子完成；JUC 原子类的底层实现。\n· 缺点：\n· **自旋消耗 CPU**（失败重试）；\n· 只能保证**单个共享变量**的原子性（多个变量需锁或封装对象）；\n· **ABA 问题**：值被 A→B→A，CAS 误以为没变过。\n· 解决 ABA：`AtomicStampedReference` 加版本号（乐观锁思路）。"},{"id":"con-11","cat":"concurrency","q":"什么是线程死锁？产生死锁的四个必要条件？如何预防？","a":"· 死锁：两个以上线程互相持有对方需要的资源并等待，造成永久阻塞。\n· 必要条件：\n1. **互斥**：资源一次只能被一个线程使用；\n2. **占有且等待**：持有资源又等待别的资源；\n3. **不可抢占**：资源只能显式释放；\n4. **循环等待**：形成资源等待环。\n· 预防：破坏任一条件——一次性申请所有资源、申请不到主动释放、按固定顺序加锁（破坏循环等待）。"},{"id":"con-12","cat":"concurrency","q":"线程池的核心参数有哪些？任务提交后的执行流程？","a":"· 核心参数（ThreadPoolExecutor）：核心线程数 `corePoolSize`、最大线程数 `maximumPoolSize`、空闲存活时间 `keepAliveTime`、时间单位、阻塞队列 `workQueue`、线程工厂、拒绝策略 `RejectedExecutionHandler`。\n· 执行流程：\n1. 线程数 < corePoolSize → 创建核心线程执行；\n2. ≥ corePoolSize → 任务入阻塞队列；\n3. 队列满且线程数 < maximumPoolSize → 创建非核心线程；\n4. 队列满且线程数 = maximumPoolSize → 触发拒绝策略（Abort 抛异常 / CallerRuns / Discard / DiscardOldest）。"},{"id":"con-13","cat":"concurrency","q":"Java 提供了哪几种线程池？为什么不推荐用 Executors 创建？","a":"· 4 种：`FixedThreadPool`（固定线程）、`SingleThreadExecutor`（单线程）、`CachedThreadPool`（可弹性）、`ScheduledThreadPoolExecutor`（定时/周期）。\n· 不推荐 Executors：\n· Fixed/Single 用**无界 LinkedBlockingQueue**，任务堆积可致 OOM；\n· Cached 最大线程数为 Integer.MAX_VALUE，可能创建过多线程耗尽资源；\n· 阿里规约强制用 `ThreadPoolExecutor` 显式指定参数，明确运行规则、规避资源耗尽。"},{"id":"con-14","cat":"concurrency","q":"AQS 的原理是什么？","a":"· AQS（AbstractQueuedSynchronizer）：JUC 锁与同步器的基座（ReentrantLock、Semaphore、CountDownLatch、ReentrantReadWriteLock 等）。\n· 核心组成：\n· `volatile int state`（同步状态）；\n· **CLH 变体双向队列**（获取锁失败的线程排队）；\n· 模板方法（tryAcquire/tryRelease 等由子类实现）。\n· 原理：线程通过 **CAS 修改 state** 抢锁，失败则入队并 `LockSupport.park` 阻塞；释放锁时唤醒队首线程。\n· 支持独占/共享两种模式，配合 Condition 实现等待/唤醒。"},{"id":"con-15","cat":"concurrency","q":"ThreadLocal 的原理？为什么会内存泄漏？","a":"· 原理：每个 Thread 内部有 `ThreadLocalMap`，以 ThreadLocal 为 key、线程私有值为 value，实现**线程数据隔离**。\n· 使用：`set/get/remove`；通常配合线程池复用时必须在 finally 中 `remove()`。\n· 内存泄漏：ThreadLocalMap 的 key 是**弱引用**，value 是强引用——ThreadLocal 被回收后 key 变 null，但 value 仍被线程引用无法回收，累积泄漏。\n· 解决：每次用完 `remove()`；ThreadLocalMap 在 get/set 时会顺带清理 null key。"},{"id":"con-16","cat":"concurrency","q":"有哪些并发容器？各自原理？","a":"· `ConcurrentHashMap`：CAS + synchronized，桶级锁。\n· `CopyOnWriteArrayList/Set`：写时复制，读不加锁。\n· `ConcurrentLinkedQueue`：无锁（CAS）链表队列。\n· `BlockingQueue`：可阻塞的队列（`ArrayBlockingQueue` 数组有界 / `LinkedBlockingQueue` 链表 / `PriorityBlockingQueue` 优先），通过 ReentrantLock + Condition 实现阻塞与唤醒。\n· `ConcurrentSkipListMap/Set`：跳表实现的有序并发容器。"},{"id":"spr-01","cat":"spring","q":"Spring、SpringMVC、SpringBoot 有什么区别？","a":"· **Spring**：全面的企业级开发框架，核心是 **IoC（依赖注入）** 与 **AOP**。\n· **SpringMVC**：Spring 的 Web 模块，基于 MVC 模式处理请求分发（DispatcherServlet）。\n· **SpringBoot**：基于 Spring 的**快速开发框架**，坚持 IOC/AOP 思想，通过**自动装配 + Starter 起步依赖**简化配置，内嵌 Tomcat，开箱即用。\n· 关系：SpringBoot 包含并简化了 Spring 与 SpringMVC 的使用。"},{"id":"spr-02","cat":"spring","rel":true,"q":"什么是 IoC？什么是 DI？","a":"· IoC（控制反转）：对象的创建与依赖关系的管理**反转**给 Spring 容器，而不是由对象自己 new。\n· DI（依赖注入）：IoC 的实现方式——容器在创建 Bean 时把所依赖的对象注入进来（构造器注入 / setter 注入 / 字段注入）。\n· 好处：降低耦合、对象单例管理、便于单元测试与替换实现。"},{"id":"spr-03","cat":"spring","q":"Spring Bean 的生命周期？","a":"1. 实例化（构造器/工厂方法）→ 属性填充（依赖注入）\n2. Aware 回调：BeanNameAware、BeanFactoryAware、ApplicationContextAware\n3. `BeanPostProcessor.postProcessBeforeInitialization`\n4. 初始化：`@PostConstruct` → `InitializingBean.afterPropertiesSet()` → `init-method`\n5. `BeanPostProcessor.postProcessAfterInitialization`（AOP 代理在此生成）\n6. 使用\n7. 销毁：`@PreDestroy` → `DisposableBean.destroy()` → `destroy-method`"},{"id":"spr-04","cat":"spring","q":"BeanFactory 和 FactoryBean 的区别？","a":"· **BeanFactory**：IoC 容器顶层接口，管理 Bean 的创建与获取（getBean）。\n· **FactoryBean**：一个特殊的 Bean，本身是**工厂**——getObject() 返回它生产的对象，Spring 通过它简化复杂对象的创建（如 MyBatis 的 SqlSessionFactoryBean）。\n· 区分：BeanFactory 是容器本身；FactoryBean 是生产对象的工厂 Bean，通过 `&beanName` 可拿到 FactoryBean 自身。"},{"id":"spr-05","cat":"spring","rel":true,"q":"什么是 AOP？核心概念有哪些？","a":"· AOP（面向切面编程）：把日志、事务、鉴权等**横切关注点**从业务代码中抽离，动态织入，降低耦合。\n· 核心概念：\n· **切面 Aspect**：横切关注点的模块化（类）；\n· **连接点 JoinPoint**：被拦截的点（Spring 仅方法调用）；\n· **切入点 Pointcut**：定义哪些方法被拦截（表达式匹配）；\n· **通知 Advice**：拦截后执行的逻辑——前置 @Before / 后置 @After / 返回 @AfterReturning / 异常 @AfterThrowing / **环绕 @Around**；\n· **目标对象**：被代理的对象；\n· **织入 Weave**：把切面应用到目标并生成代理的过程。"},{"id":"spr-06","cat":"spring","rel":true,"q":"JDK 动态代理和 CGLIB 代理的区别？Spring AOP 怎么选？","a":"· **JDK 动态代理**：基于接口，`Proxy.newProxyInstance` 生成接口实现类，InvocationHandler 处理调用；**目标类必须实现接口**。\n· **CGLIB 代理**：基于继承，运行时生成目标类的子类并覆盖方法（字节码增强）；**类和方法不能是 final**。\n· Spring AOP 选择：目标实现了接口 → 默认 JDK 动态代理；未实现接口 → CGLIB；SpringBoot 2.x 默认用 CGLIB（proxyTargetClass=true）。\n· 注意：CGLIB 无法代理 final 类/方法；JDK 代理对目标类内部调用（this 调用）不生效。"},{"id":"spr-07","cat":"spring","q":"Spring 事务的传播机制有哪几种？","a":"· **REQUIRED**（默认）：有事务则加入，无则新建。\n· **SUPPORTS**：有则加入，无则以非事务执行。\n· **MANDATORY**：必须有事务，否则抛异常。\n· **REQUIRES_NEW**：挂起当前事务，新建独立事务（日志记录、发红包等独立提交场景）。\n· **NOT_SUPPORTED**：挂起当前事务，以非事务执行。\n· **NEVER**：不允许有事务，有则抛异常。\n· **NESTED**：嵌套事务（savepoint，内层回滚不影响外层）。"},{"id":"spr-08","cat":"spring","q":"Spring 事务的隔离级别？和数据库隔离级别的关系？","a":"· Spring 通过 `@Transactional(isolation=...)` 指定，与数据库隔离级别对应：\n· DEFAULT：用数据库默认（MySQL InnoDB 默认 REPEATABLE_READ，Oracle 默认 READ_COMMITTED）；\n· READ_UNCOMMITTED：可能脏读；\n· READ_COMMITTED：避免脏读，可能不可重复读；\n· REPEATABLE_READ：避免脏读与不可重复读，可能幻读；\n· SERIALIZABLE：完全串行，性能最差。\n· 注意：隔离级别最终由数据库实现，Spring 只是透传配置。"},{"id":"spr-09","cat":"spring","q":"@Transactional 有哪些失效场景？","a":"· **同类内部方法调用**：this 调用不走代理，事务不生效（需注入自身或拆类）。\n· 方法非 public（默认基于代理，private/protected 不生效）。\n· 异常被 catch 吞掉：事务只对抛出 RuntimeException/Error 回滚，受检异常需 `rollbackFor=Exception.class`。\n· 数据库引擎不支持事务（MyISAM）。\n· Bean 未纳入 Spring 管理（new 出来的）。\n· 传播行为设置为 NOT_SUPPORTED / NEVER。"},{"id":"spr-10","cat":"spring","q":"@Autowired 和 @Resource 的区别？","a":"· **@Autowired**（Spring）：默认**按类型**注入，找到多个再按名字（Field name）；需要 @Qualifier 指定。\n· **@Resource**（JSR-250，JDK 标准）：默认**按名称**注入，找不到再按类型。\n· 使用建议：同一类型多实现时，@Autowired + @Qualifier 或 @Resource(name=...)。"},{"id":"spr-11","cat":"spring","q":"Spring 如何解决循环依赖？为什么要三级缓存？","a":"· 场景：单例 Bean 的**字段/setter 注入**循环依赖可解决（构造器注入的循环依赖无法解决，会抛异常）。\n· 三级缓存：\n1. 一级 `singletonObjects`：成品单例池；\n2. 二级 `earlySingletonObjects`：**提前暴露的半成品**（未完成属性注入）；\n3. 三级 `singletonFactories`：**对象工厂**，用于生成代理对象（AOP）。\n· 流程：A 创建时提前放入三级缓存暴露引用 → A 注入 B → B 创建时注入 A，从三级缓存拿到 A 的早期引用 → B 完成 → A 继续注入并完成。\n· 为什么三级：需要三级才能在循环依赖时**正确处理 AOP 代理**（只有真正发生依赖时才通过工厂生成代理），避免所有 Bean 都提前代理。"},{"id":"spr-12","cat":"spring","q":"描述一下 SpringMVC 的执行流程。","a":"1. 请求到达前端控制器 `DispatcherServlet`；\n2. `HandlerMapping` 处理器映射器找到对应 Handler 及拦截器；\n3. `HandlerAdapter` 适配并调用具体 Controller 方法；\n4. Controller 返回 `ModelAndView`；\n5. `ViewResolver` 视图解析器解析逻辑视图名 → 具体 View；\n6. View 渲染（模型数据填充页面）→ 响应客户端。"},{"id":"spr-13","cat":"spring","q":"SpringMVC 常用注解有哪些？作用是什么？","a":"· `@Controller` / `@RestController`（= @Controller + @ResponseBody）：声明控制器。\n· `@RequestMapping`（及派生 @GetMapping/@PostMapping 等）：映射 URL 与方法。\n· `@RequestBody`：JSON 请求体 → Java 对象；`@ResponseBody`：返回对象 → JSON。\n· `@PathVariable`：路径参数；`@RequestParam`：查询参数。\n· `@ExceptionHandler`：局部异常处理；`@ControllerAdvice`：全局异常处理。"},{"id":"spr-14","cat":"spring","rel":true,"q":"SpringBoot 自动装配的原理是什么？","a":"· 入口注解 `@SpringBootApplication` = `@Configuration` + `@EnableAutoConfiguration` + `@ComponentScan`。\n· 原理：`@EnableAutoConfiguration` 通过 `AutoConfigurationImportSelector` 读取 **`META-INF/spring.factories`（或 AutoConfiguration.imports）** 中注册的 AutoConfiguration 类；\n· 每个自动配置类用 `@ConditionalOnClass/@ConditionalOnMissingBean` 等**条件注解**判断（依赖存在、Bean 缺失、配置生效）后才装配；\n· 本质：约定优于配置，按 Starter 依赖自动装配对应 Bean。"},{"id":"spr-15","cat":"spring","q":"Spring Boot Starter 有什么作用？","a":"· Starter 是**预配置的依赖模块**：封装了特定功能（Web、JPA、Redis 等）所需的依赖项与默认配置。\n· 好处：引入一个 Starter 即可使用对应能力，无需手动逐个加依赖、配版本、写大量配置，避免版本冲突。\n· 原理：Starter 依赖 + 自动装配类共同生效。"},{"id":"spr-16","cat":"spring","q":"Spring 的单例 Bean 在多线程下如何保证线程安全？","a":"· 默认单例 Bean 是共享对象，若有**可变状态**则存在线程安全问题。\n· 处理方式：\n· 设计成**无状态**（推荐）：Service 不保存可变成员变量；\n· 有状态对象用 ThreadLocal 隔离；\n· 使用局部变量替代成员变量；\n· 必要时加锁或使用并发容器。\n· 注意：`@Scope(\"prototype\")` 只是每次新建对象，不能解决已注入单例的共享问题。"},{"id":"spr-17","cat":"spring","q":"Spring 中用了哪些设计模式？举例说明。","a":"· **工厂模式**：BeanFactory 创建 Bean。\n· **单例模式**：默认单例 Bean。\n· **代理模式**：AOP 动态代理。\n· **模板方法**：JdbcTemplate、RestTemplate。\n· **观察者模式**：Spring 事件驱动（ApplicationEvent / @EventListener）。\n· **适配器模式**：SpringMVC HandlerAdapter 适配不同 Controller。\n· **装饰器模式**：BeanWrapper 对 Bean 属性设置。\n· **策略模式**：Resource 资源访问、AopProxy 选择等。"},{"id":"myb-01","cat":"mybatis","q":"JDBC 编程有哪些不足？MyBatis 如何解决？","a":"· JDBC 不足：连接频繁创建/释放浪费资源；SQL 写死在代码中难维护；参数传递麻烦（占位符一一对应）；结果集解析繁琐。\n· MyBatis 解决：\n· 配置**连接池**管理连接；\n· SQL 写在 **Mapper XML** 中与 Java 代码分离；\n· 参数通过 `#{}` 自动映射（PreparedStatement 预编译）；\n· 自动把结果集映射为 POJO（resultType/resultMap）。"},{"id":"myb-02","cat":"mybatis","rel":true,"q":"`#{}` 和 `${}` 的区别？为什么 `#{}` 能防止 SQL 注入？","a":"· `#{}`：**预编译占位符**，MyBatis 生成 `?`，由 PreparedStatement 参数化传值，值被当作数据而非 SQL 片段 → **防止 SQL 注入**。\n· `${}`：**字符串直接拼接**进 SQL，可能被注入恶意 SQL（如 `' or 1=1 --`）；仅适合表名、排序字段等无法用占位符的动态部分（且必须白名单校验）。\n· 结论：能不用 ${} 就不用；需要时对输入做严格校验。"},{"id":"myb-03","cat":"mybatis","q":"MyBatis 的 Dao 接口和 XML 中的 SQL 是如何建立关联的？","a":"· 核心：接口全限定名 + 方法名 = **namespace + id**，唯一对应一个 `MappedStatement`。\n· 原理：MyBatis 启动时解析 XML 生成 MappedStatement 存入 Configuration；\n· 运行时用 **JDK 动态代理**为 Mapper 接口生成代理对象，调用方法时以 `接口全限定名.方法名` 为 key 找到对应 SQL 执行。\n· 所以 Mapper 接口没有实现类也能工作。"},{"id":"myb-04","cat":"mybatis","q":"MyBatis 动态 SQL 有哪些标签？","a":"· `if`：条件判断（test 表达式）。\n· `where`：自动处理首个条件前的 AND/OR，至少一个条件才生成 WHERE。\n· `set`：动态更新列，去除末尾逗号。\n· `trim`：自定义前后缀与去重（通用 where/set）。\n· `foreach`：循环（IN 集合、批量插入）。\n· `choose/when/otherwise`：类似 switch-case。\n· `bind`：变量绑定（如模糊查询拼接 `%${name}%` 的替代）。"},{"id":"myb-05","cat":"mybatis","q":"MyBatis 一级缓存和二级缓存的区别？","a":"· **一级缓存**：`SqlSession` 级别，默认开启；同一 SqlSession 内相同查询直接命中缓存；执行增删改 commit 后清空（避免脏读）。\n· **二级缓存**：`namespace`（Mapper）级别，跨 SqlSession 共享，默认关闭需开启；缓存粒度按 Mapper 划分。\n· 注意：Spring 整合后每次查询会关闭 SqlSession，若无事务一级缓存意义不大，多级缓存主要靠二级；缓存对象需实现序列化接口。"},{"id":"myb-06","cat":"mybatis","rel":true,"q":"MyBatis 插件（Interceptor）的原理？","a":"· 作用对象：四大核心组件——`Executor`（执行器）、`StatementHandler`（SQL 处理）、`ParameterHandler`（参数）、`ResultSetHandler`（结果集）。\n· 原理：MyBatis 用 **JDK 动态代理**包装核心对象，拦截指定方法；多个插件形成**责任链**（层层代理）。\n· 实现：实现 `Interceptor` 接口（intercept/plugin/setProperties），`@Intercepts(@Signature(...))` 指定拦截的方法。\n· 应用：分页插件 PageHelper、SQL 审计、字段自动填充。"},{"id":"myb-07","cat":"mybatis","q":"什么是 MyBatis 的延迟加载？","a":"· 延迟加载（懒加载）：关联查询时**先只查主对象**，真正访问关联对象属性时才发 SQL 查关联数据。\n· 好处：减少不必要的数据库查询、减轻压力（一对多场景）。\n· 要求：主查询与关联查询必须是**独立的 select 语句**（不能用 join 一次性查出）。\n· 配置：`<association>`/`<collection>` 的 `fetchType=lazy` 或全局 lazyLoadingEnabled。"},{"id":"myb-08","cat":"mybatis","q":"resultType 和 resultMap 的区别？","a":"· `resultType`：自动映射——列名与属性名一致（或用别名）时自动封装到指定类型，**简单直接**。\n· `resultMap`：**手动映射**——定义列与属性的对应关系，适合列名不一致、多表关联、复杂嵌套（association/collection）。\n· 两者不能同时使用；复杂映射优先 resultMap，简单查询用 resultType。"},{"id":"myb-09","cat":"mybatis","q":"MyBatis 和 Hibernate 的区别？","a":"· **Hibernate**：全自动 ORM，通过对象操作自动生成 SQL，数据库无关性好，适合关系模型稳定、CRUD 为主的系统；学习曲线陡、SQL 难优化。\n· **MyBatis**：半自动 ORM，SQL 由**程序员编写**，灵活可控、易优化，适合需求多变、SQL 复杂或需要精细控制性能的系统；需手写多套 SQL 才能跨数据库。\n· 选择：互联网高并发/复杂查询 → MyBatis；企业级标准 CRUD → Hibernate（JPA）。"},{"id":"myb-10","cat":"mybatis","q":"MyBatis 的初始化过程是怎样的？","a":"1. 解析 `mybatis-config.xml` 全局配置（数据源、插件、类型别名等）→ 生成 `Configuration`；\n2. 解析每个 `Mapper.xml`：每个 SQL 标签封装成 `SqlSource`，生成 `MappedStatement`；\n3. 解析 Mapper 接口上的注解（@Select 等）同样生成 MappedStatement；\n4. 通过 `SqlSessionFactoryBuilder` 创建 `SqlSessionFactory`，运行期由它创建 `SqlSession` 执行 SQL。"},{"id":"myb-11","cat":"mybatis","q":"Mapper 接口的绑定有哪几种实现方式？","a":"1. **注解绑定**：方法上加 `@Select/@Insert/@Update/@Delete` 直接写 SQL，适合简单 SQL。\n2. **XML 绑定**：XML 中 `namespace` = 接口全限定名，SQL id = 方法名，适合复杂 SQL。\n· 注意：注解与 XML 的 SQL 不能重复定义同一方法；两种方式原理都是动态代理定位 MappedStatement。"},{"id":"myb-12","cat":"mybatis","q":"MyBatis 的分页是怎么实现的？","a":"· 物理分页：SQL 层面 `LIMIT offset,size`。\n· 实现方式：\n· 手写 limit（需改 SQL，不通用）；\n· **PageHelper 插件**：基于 Interceptor 拦截 `Executor.query`，解析参数中的 Page 对象，用方言自动拼接 limit 并返回 PageInfo；\n· 原理本质：插件（动态代理 + 责任链）+ SQL 方言拼装。"},{"id":"mys-01","cat":"mysql","rel":true,"q":"事务的 ACID 特性是什么？","a":"· **原子性 Atomicity**：事务内操作要么全部成功要么全部回滚。\n· **一致性 Consistency**：事务前后数据满足约束（总量不变等）。\n· **隔离性 Isolation**：并发事务互不干扰，由隔离级别控制。\n· **持久性 Durability**：提交后数据永久保存（redo log + 落盘）。\n· 实现：原子性/持久性靠 undo log、redo log；隔离性靠锁 + MVCC；一致性由上层保证。"},{"id":"mys-02","cat":"mysql","q":"MySQL 的四种事务隔离级别？","a":"· **READ UNCOMMITTED**（读未提交）：可读未提交数据，存在脏读。\n· **READ COMMITTED**（读已提交）：只能读已提交，避免脏读，存在不可重复读（Oracle 默认）。\n· **REPEATABLE READ**（可重复读）：同一事务多次读结果一致，避免脏读/不可重复读，存在幻读（**MySQL InnoDB 默认**）。\n· **SERIALIZABLE**（串行化）：事务完全串行，最安全但性能最差。"},{"id":"mys-03","cat":"mysql","q":"什么是脏读、不可重复读、幻读？","a":"· **脏读**：读到其他事务**未提交**的数据，该事务回滚后数据失效。\n· **不可重复读**：同一事务内两次读取同一行，因其他事务**已提交修改**而结果不同（关注一行内容的改变）。\n· **幻读**：同一事务内两次查询同一条件，因其他事务**插入/删除了符合条件的行**而结果集行数变化（关注行数）。"},{"id":"mys-04","cat":"mysql","q":"InnoDB 如何解决幻读？","a":"· 用 **MVCC（快照读）** + **间隙锁/临键锁（当前读）**：\n· 快照读（普通 SELECT）：基于 Read View 一致性快照，天然避免幻读；\n· 当前读（`SELECT ... FOR UPDATE`、`UPDATE`、`DELETE`）：使用**临键锁（记录锁+间隙锁）**锁定范围，阻止其他事务插入，从而防幻读；\n· 所以 MySQL 默认 REPEATABLE READ 级别下基本无幻读问题（但完全避免需在事务开始时用 `LOCK IN SHARE MODE` 锁定范围等）。"},{"id":"mys-05","cat":"mysql","rel":true,"q":"为什么 MySQL 的索引用 B+ 树而不是 B 树或哈希？","a":"· **B+ 树**特点：\n· 非叶子节点只存**索引键**（不存数据），树更矮胖，**一次 IO 能读更多索引**，减少磁盘 IO；\n· 叶子节点用**双向链表串联**，范围查询/排序高效；\n· 数据只在叶子节点，查询路径稳定（树高即 IO 次数）。\n· B 树：节点也存数据，树更高、范围查询需中序遍历，效率低。\n· 哈希索引：等值查询 O(1) 最快，但不支持范围查询与排序，只适合精确匹配（Memory 引擎）。"},{"id":"mys-06","cat":"mysql","q":"聚簇索引和非聚簇索引的区别？什么是回表？","a":"· **聚簇索引**（InnoDB 主键索引）：叶子节点**直接存整行数据**，一张表只有一个（主键，无主键用唯一键/隐藏 rowid）。\n· **非聚簇索引**（二级索引）：叶子节点存**索引列 + 主键值**，不存完整行。\n· **回表**：通过二级索引查到主键后，再回到聚簇索引查完整行数据的过程。\n· 优化：尽量用**覆盖索引**（查询列都在二级索引中）避免回表。"},{"id":"mys-07","cat":"mysql","q":"什么是联合索引的最左前缀原则？","a":"· 联合索引 (a,b,c) 相当于建立了 a、(a,b)、(a,b,c) 三个索引。\n· 查询条件必须**从最左列开始连续匹配**才能用到索引：`where a=?`、`where a=? and b=?` 可用；`where b=?` 无法使用该索引。\n· 原因：B+ 树按索引定义顺序排序，先按 a 排、再按 b、再按 c。\n· 优化：把区分度高、等值查询多的列放前面；适当冗余索引（(a,b) 和 (b,a) 是不同索引）。"},{"id":"mys-08","cat":"mysql","q":"什么是覆盖索引？","a":"· 覆盖索引：**查询的字段全部包含在索引列中**，无需回表即可从索引直接取得数据。\n· 好处：减少回表 IO，性能显著提升。\n· 示例：`SELECT name,age FROM user WHERE age>20`，若联合索引 (age,name) 则 name 也可从索引取，无需回表。\n· 注意：`SELECT *` 通常无法覆盖，尽量只查需要的列。"},{"id":"mys-09","cat":"mysql","rel":true,"q":"SQL 优化有哪些常用手段？","a":"· **索引**：为 where/order by/join 字段建索引；避免索引失效（函数、隐式转换、`%` 前缀模糊、OR 非索引列等）。\n· **查询**：只查所需列（避免 SELECT *）；避免 `SELECT DISTINCT`/`ORDER BY` 无索引排序；大偏移分页用游标或 id 过滤。\n· **SQL 写法**：小表驱动大表；避免 `!=`、`NOT IN`、`OR` 导致索引失效；合理使用覆盖索引。\n· **结构**：大表分库分表/分区；冗余字段减少 join；冷热数据分离。\n· **分析**：用 `EXPLAIN` 看 type/key/rows/Extra，定位慢 SQL。"},{"id":"mys-10","cat":"mysql","q":"什么是慢查询？如何定位和优化？","a":"· 慢查询：执行时间超过阈值的 SQL（默认 long_query_time=10s，可调小）。\n· 定位：开启慢查询日志 `slow_query_log`；`mysqldumpslow` 汇总；或 `performance_schema` 分析。\n· 优化：EXPLAIN 看执行计划 → 建/调索引 → 改写 SQL → 必要时拆分大查询、缓存。"},{"id":"mys-11","cat":"mysql","q":"MySQL（InnoDB）的锁有哪些？","a":"· 按粒度：**行锁**（Record Lock）、**表锁**、**间隙锁**（Gap Lock）、**临键锁**（Next-Key = 记录+间隙，防幻读）。\n· 按性质：**共享锁 S**（读锁）、**排他锁 X**（写锁）；意向锁（IS/IX，表级，表示下面有行锁）。\n· 按策略：悲观锁（SELECT FOR UPDATE）、乐观锁（版本号/CAS）。\n· 注意：行锁基于**索引**，条件无索引会退化为表锁。"},{"id":"mys-12","cat":"mysql","q":"MVCC 的实现原理是什么？","a":"· MVCC（多版本并发控制）：通过**隐藏字段 + undo log + Read View** 实现快照读，读写互不阻塞。\n· 隐藏字段：`DB_TRX_ID`（最近修改事务 id）、`DB_ROLL_PTR`（回滚指针指向 undo log 旧版本）。\n· 读操作：根据 Read View（活跃事务列表 + 上限）判断版本可见性，不可见则沿 undo log 链找旧版本。\n· 结合隔离级别：RC 每次读生成新 Read View；**RR 事务首次读生成 Read View 后复用**，保证可重复读。"},{"id":"mys-13","cat":"mysql","q":"binlog、redo log、undo log 的区别？","a":"· **redo log**：InnoDB 的**物理日志**，记录页的修改，崩溃恢复用（WAL 先写日志再落盘），保证**持久性**。\n· **undo log**：InnoDB 的**逻辑日志**，记录数据修改前的版本，用于**回滚**与 MVCC 快照读，保证**原子性**。\n· **binlog**：MySQL **Server 层**的二进制日志，记录所有变更，用于**主从复制、数据恢复**，事务提交时写入。\n· 关系：redo 是物理页重做、循环写；undo 是版本链；binlog 是逻辑语句、追加写。"},{"id":"mys-14","cat":"mysql","rel":true,"q":"什么是 SQL 注入？如何防止？（结合你的 NL2SQL 项目）","a":"· SQL 注入：把恶意 SQL 拼进查询条件执行，如 `' OR '1'='1`。\n· 常规防护：\n· **预编译 + 参数化**（PreparedStatement / MyBatis `#{}`）；\n· 输入校验（类型、长度、白名单）；\n· 最小权限数据库账号；\n· 对动态拼接部分（表名、排序字段）做白名单。\n· AI 生成 SQL 场景（NL2SQL 项目）：生成后必须二次校验——**JSqlParser 解析语法 + 白名单（只允许 SELECT、限定表/列）+ 只读账号执行**，任何校验不过即拒绝执行。"},{"id":"red-01","cat":"redis","rel":true,"q":"Redis 为什么快？单线程如何支持高并发？","a":"· 快的原因：\n· **纯内存操作**，CPU 不是瓶颈；\n· 核心网络模型**单线程 + IO 多路复用**（文件事件处理器监听多 Socket，避免上下文切换与锁竞争）；\n· 高效数据结构（跳表、压缩列表、dict 等）；\n· 单线程天然保证操作**原子性**，无并发问题。\n· 高并发：单线程处理的是**网络请求**，通过 IO 多路复用（epoll）并发监听大量连接；瓶颈在内存大小与网络带宽而非 CPU。"},{"id":"red-02","cat":"redis","rel":true,"q":"Redis 有哪五种基本数据类型？应用场景？","a":"· **String**：缓存、计数器（INCR）、分布式锁（SETNX）、Session。\n· **Hash**：对象存储（用户、商品）、购物车。\n· **List**：消息队列（LPUSH/BRPOP）、最新列表、时间线。\n· **Set**：去重、抽奖、共同关注（交集）、标签。\n· **ZSet（Sorted Set）**：排行榜（score 排序）、延时队列（score=时间戳）。"},{"id":"red-03","cat":"redis","rel":true,"q":"什么是缓存穿透、缓存击穿、缓存雪崩？如何解决？","a":"· **穿透**：查询**不存在**的 key，缓存失效直接打到 DB。解决：参数校验、缓存空值（短 TTL）、**布隆过滤器**拦截。\n· **击穿**：某个**热点 key 过期瞬间**大量请求打到 DB。解决：热点 key 永不过期/逻辑过期、**互斥锁**（SETNX 只放一个线程回源）。\n· **雪崩**：**大量 key 同时过期**或 Redis 宕机，请求全部打到 DB。解决：过期时间加**随机值**、多级缓存、限流降级、Redis 高可用（哨兵/集群）。"},{"id":"red-04","cat":"redis","q":"Redis 的持久化机制 RDB 和 AOF 有什么区别？","a":"· **RDB**：定期生成**二进制快照**，文件小、恢复快；缺点可能丢失两次快照间的数据（可配策略），fork 阻塞。\n· **AOF**：**追加写命令日志**，默认 everysec 刷盘，数据丢失少；文件大、恢复慢；重写（rewrite）可压缩。\n· 选择：追求数据安全用 AOF（或混合持久化）；可容忍少量丢失、要求恢复快用 RDB；生产常用 RDB+AOF 混合。"},{"id":"red-05","cat":"redis","q":"如何保证缓存和数据库的一致性？","a":"· 常见方案（Cache Aside）：\n· 读：先读缓存，未命中读 DB 再回填；\n· 写：**先更新 DB，再删除缓存**（比更新缓存更稳，避免并发写导致脏数据）；\n· 删除失败兜底：延迟双删、消息队列重试、订阅 binlog（Canal）异步删缓存。\n· 强一致场景：分布式锁 / 事务消息；通常业务接受最终一致性即可。"},{"id":"red-06","cat":"redis","q":"Redis 的过期删除策略和内存淘汰策略？","a":"· 过期删除：\n· **惰性删除**：访问时检查是否过期，过期则删（省 CPU，浪费内存）；\n· **定期删除**：周期抽样删除过期 key（折中）；\n· 两者结合，不做实时全量扫。\n· 内存淘汰（maxmemory-policy）：`allkeys-lru`、`volatile-lru`、`allkeys-lfu`、`volatile-ttl`、`noeviction` 等，按场景选择 LRU/LFU。"},{"id":"red-07","cat":"redis","q":"Redis 分布式锁怎么实现？","a":"· 基础：`SET key value NX EX 30`（原子设置，NX 不存在才设，EX 过期防死锁）。\n· 注意：value 要唯一（线程标识），释放时用 Lua 脚本**校验后删除**（防误删他人锁）。\n· 续期：长任务需要**看门狗自动续期**（Redisson 默认 30s 自动续期）。\n· 高可用：RedLock 多节点加锁（多数派成功），或在 Redis 集群场景权衡；更推荐基于 Zookeeper/etcd 的强一致锁（可选）。"},{"id":"red-08","cat":"redis","q":"什么是 Redis 的 IO 多路复用？","a":"· 多路复用：一个线程同时监听多个 Socket 的读写事件，通过 select/epoll 内核机制，有事件才处理，无事件不阻塞。\n· Redis 的文件事件处理器：连接应答处理器 → 命令请求处理器 → 命令回复处理器，根据事件类型分发。\n· 好处：单线程即可支撑数万连接，无锁、无上下文切换。"},{"id":"red-09","cat":"redis","q":"什么是热 key 和大 key？如何发现与处理？","a":"· **热 key**：访问量极高的 key。处理：本地缓存+Redis 多副本、读写分离、key 打散（加随机后缀）。\n· **大 key**：value 很大（如大 String 或大集合）。危害：阻塞单线程、内存不均、主从延迟。处理：拆分（Hash 分片/分段）、压缩、惰性删除（unlink 异步）。\n· 发现：`--bigkeys`、`INFO`、monitor、热点统计工具。"},{"id":"red-10","cat":"redis","q":"Redis 在项目中一般用来做什么？（结合你的简历）","a":"· 缓存热点数据（如用户会话、课程/课表查询结果），降低 MySQL 压力；\n· 计数与限流（INCR + 过期窗口）；\n· 分布式锁（预约挂号并发场景防超卖/重复预约）；\n· 排行榜/最近列表；\n· 注意点：缓存一致性（先更新库再删缓存）、穿透/击穿/雪崩防护。"},{"id":"net-01","cat":"network","rel":true,"q":"HTTP 1.0、1.1、2.0 有什么区别？","a":"· **HTTP/1.0**：短连接，每次请求新建 TCP，用完即断。\n· **HTTP/1.1**：**默认长连接**（Keep-Alive）、管道化（受限）、支持 Host 头、断点续传；队头阻塞（一个请求未完成其他等待）。\n· **HTTP/2.0**：**二进制分帧**、**多路复用**（单连接并行请求）、头部压缩（HPACK）、**服务端推送**；解决队头阻塞。\n· HTTP/3（QUIC）：基于 UDP，更低的连接建立延迟。"},{"id":"net-02","cat":"network","q":"HTTP 常见的状态码有哪些？","a":"· 1xx：信息（100 Continue）。\n· 2xx：成功——**200 OK**、201 Created、204 No Content。\n· 3xx：重定向——301 永久、302 临时、304 Not Modified（缓存命中）。\n· 4xx：客户端错误——**400** 参数错误、**401** 未认证、**403** 无权限、**404** 不存在、**429** 限流。\n· 5xx：服务端错误——**500** 内部错误、**502** 网关错误、**503** 服务不可用、**504** 网关超时。"},{"id":"net-03","cat":"network","q":"GET 和 POST 的区别？","a":"· 语义：GET 获取资源（幂等、安全），POST 提交/创建资源（非幂等）。\n· 参数：GET 放 URL（长度受限、明文）；POST 放请求体（可传大数据、二进制）。\n· 缓存：GET 可被浏览器缓存、收藏、回退；POST 一般不缓存。\n· 本质：都是 TCP 报文，传输层没有语义差别，区别来自**协议语义与浏览器行为**。"},{"id":"net-04","cat":"network","q":"TCP 三次握手的过程？为什么不是两次？","a":"1. Client → Server：SYN=1, seq=x（请求连接）；\n2. Server → Client：SYN=1, ACK=1, seq=y, ack=x+1（同意并回执）；\n3. Client → Server：ACK=1, ack=y+1（确认建立）。\n· 为什么两次不行：防止**已失效的连接请求**突然到达服务端造成资源浪费（服务端无法确认客户端是否收到确认），三次握手保证双方收发能力与序列号同步。"},{"id":"net-05","cat":"network","q":"TCP 四次挥手的过程？","a":"1. Client → Server：FIN=1（不再发数据）；\n2. Server → Client：ACK=1（确认收到，进入半关闭）；\n3. Server → Client：FIN=1（数据发完，关闭连接）；\n4. Client → Server：ACK=1，等待 2MSL 后关闭。\n· 为什么四次：TCP 全双工，两端各自独立关闭；服务端收到 FIN 后可能还有数据要发，先回 ACK、数据发完再发 FIN。\n· 2MSL：保证最后一个 ACK 可达，避免旧连接报文干扰新连接。"},{"id":"net-06","cat":"network","q":"TCP 和 UDP 的区别？","a":"· **TCP**：面向连接（三次握手）、可靠（确认重传、序号）、有序、面向字节流、全双工、有拥塞/流量控制；适合文件传输、网页等。\n· **UDP**：无连接、尽最大努力交付、不可靠、无顺序保证、面向报文、开销小延迟低；适合音视频、实时游戏、DNS、QUIC。"},{"id":"net-07","cat":"network","q":"HTTP 和 HTTPS 的区别？","a":"· HTTPS = HTTP + **TLS/SSL**，在 TCP 之上加了加密层。\n· 端口：HTTP 80，HTTPS 443。\n· 安全：HTTPS 通过**证书验证身份 + 对称加密传数据 + 非对称加密交换密钥**，防窃听、防篡改、防冒充。\n· 成本：HTTPS 有握手开销（可复用连接/会话恢复优化），需要证书。"},{"id":"net-08","cat":"network","rel":true,"q":"RESTful 接口设计规范有哪些？","a":"· **资源**：用名词表示资源（/users/{id}），不用动词。\n· **HTTP 方法**：GET 查询、POST 创建、PUT 全量更新、PATCH 部分更新、DELETE 删除。\n· **状态码**：用语义化状态码表达结果（200/201/204/400/404/500）。\n· **无状态**：服务端不存客户端状态，用 Token 鉴权。\n· **版本**：URL 或 Header 带版本（/v1/users）。\n· 返回统一 JSON 结构（code/message/data），分页统一约定。"},{"id":"net-09","cat":"network","rel":true,"q":"什么是 SSE？SSE 和 WebSocket 的区别？","a":"· **SSE**（Server-Sent Events）：**单向**服务端 → 客户端的流式推送，基于 HTTP，`Content-Type: text/event-stream`，浏览器自动重连、有事件 ID。\n· 区别：\n· 方向：SSE 单向（服务端推）；WebSocket 全双工双向；\n· 协议：SSE 基于 HTTP 即可；WebSocket 需单独握手升级协议；\n· 复杂度：SSE 简单、天然支持重连；WebSocket 复杂但适合聊天、游戏等强交互；\n· **场景**：AI 流式对话（打字机效果）用 SSE 就够（你的项目里 WebFlux + SSE 正是如此）。"},{"id":"net-10","cat":"network","q":"Cookie、Session、Token 的区别？","a":"· **Cookie**：浏览器存储的小数据，每次请求自动携带，用于维持状态。\n· **Session**：服务端存储的会话数据，靠 Cookie 里的 sessionId 关联；有服务端内存压力、集群需共享。\n· **Token**（JWT）：无状态，服务端验签即可，适合分布式/跨域；但吊销难、载荷不宜过大。\n· 演进：传统 Session → JWT/Token + Redis 会话，适应分布式架构。"},{"id":"net-11","cat":"network","q":"什么是 TCP 粘包/拆包？如何解决？","a":"· 原因：TCP 是字节流，无消息边界；发送方粘包（多次 send 合并）或接收方拆包（一次读半条）。\n· 解决：\n· 定长消息；\n· 消息头加**长度字段**（最常用）；\n· 特殊分隔符（如 \n、自定义）；\n· 应用层协议（如 HTTP Content-Length、WebSocket 帧）。"},{"id":"net-12","cat":"network","q":"浏览器输入 URL 到页面显示，经历了什么？","a":"1. URL 解析 + HSTS 检查；\n2. **DNS 解析**（本地缓存 → 递归/迭代查询）得到 IP；\n3. 建立 TCP 连接（三次握手，HTTPS 再加 TLS 握手）；\n4. 发送 HTTP 请求（若命中缓存直接返回）；\n5. 服务器处理并返回响应；\n6. 浏览器解析 HTML → 构建 DOM/CSSOM → 渲染树 → 布局 → 绘制；\n7. 加载子资源（JS/CSS/图片），执行 JS；\n8. 断开连接（四次挥手 / 长连接复用）。"},{"id":"prj-01","cat":"project","rel":true,"q":"介绍一下「蚂蚁小智」项目：定位、技术栈和你负责的部分。","a":"· 定位：独立开发的 **AI 智能客服应用**，模拟「北京协和医院」的智能客服与医疗伴诊助手，用自然语言完成**分导诊、号源查询、预约挂号、取消挂号**，并接入 RAG 知识库回答问询。\n· 技术栈：`Spring Boot 3.5.11` + `Java 17` + Maven；`LangChain4j 1.11.0-beta19`（open-ai / ollama / dashscope / easy-rag / pinecone / reactor）；`WebFlux` 流式；`MySQL`（预约数据，MyBatis-Plus）+ `MongoDB`（会话记忆）+ `Pinecone`（向量库）；Knife4j 接口文档。\n· 我负责全部后端：核心做了四件事——**多模型接入流式对话、MongoDB 多轮会话记忆、RAG 知识库问答、Function Calling 预约挂号工具**，串成一个完整业务闭环。\n· 服务地址 `http://localhost:8080`，接口文档 `/doc.html`。"},{"id":"prj-02","cat":"project","rel":true,"q":"项目里怎么实现多模型接入的？换模型需要改什么？","a":"· 基于 LangChain4j 统一抽象，配了三个来源：\n· **阿里云百炼 DashScope**（OpenAI 兼容模式）：`deepseek-v3.2`；\n· 百炼社区模型：`qwen-max`、`qwen-plus`（流式）；\n· 本地 `Ollama deepseek-r1:1.5b`（离线兜底）。\n· 接入方式：`application.properties` 分别配置各模型的 bean（open-ai 兼容 ChatModel / streamingChatModel、dashscope、ollama）；\n· 主智能体 `XiaozhiAgent` 用 `@AiService` 注解声明，通过 `streamingChatModel = \"qwenStreamingChatModel\"` 指定用哪个 bean——**换模型就是改配置或改注解，业务代码不动**。\n· 向量模型统一用 `text-embedding-v3`。"},{"id":"prj-03","cat":"project","rel":true,"q":"流式对话是怎么实现的？为什么用 WebFlux？","a":"· 链路：`POST /xiaozhi/chat`（请求体 `{\"memoryId\":1,\"message\":\"我想挂神经内科的号\"}`）→ `XiaozhiController` → `XiaozhiAgent.chat()`（`@AiService` 声明式接口，返回 `Flux<String>`）→ 模型流式生成 → Controller `produces = \"text/stream;charset=utf-8\"` 增量返回。\n· 前端按 SSE 文本流逐字渲染，体验是\"打字机\"效果，**不用等完整回答**，首字延迟低。\n· 为什么 WebFlux：模型流式生成是异步事件流，用 Reactor 的 `Flux` 天然表达\"逐步产出\"；非阻塞模型下不占用线程等待，适合流式高并发场景。\n· 关键点：智能体接口必须选 `streamingChatModel`（流式模型 bean），普通 ChatModel 只能整体返回。"},{"id":"prj-04","cat":"project","rel":true,"q":"SSE 流式响应的数据格式是什么？","a":"· SSE（Server-Sent Events）每块数据是固定格式文本，字段 `field: value`，空行分隔：\n```\nid: 1\ndata: {\"content\":\"你\"}\n\ndata: {\"content\":\"好\"}\n\nevent: done\ndata: [DONE]\n\n```\n· 关键字段：`data`（内容）、`event`（事件类型）、`id`（事件 ID）、`retry`（重连时间）。\n· 本项目使用简化形式：Controller 返回 `text/stream`，每段就是一个文本块；客户端 `fetch` + `ReadableStream` 或 `EventSource` 增量读取。\n· 特点：**单向**服务端推送、基于 HTTP 即可、浏览器自动重连。"},{"id":"prj-05","cat":"project","rel":true,"q":"RAG 知识库的完整流程是什么？","a":"· 离线：`knowledge` 目录的医院/科室/神经内科等 md、txt、pdf 文档 → `text-embedding-v3` 向量化 → 存入 **Pinecone**（Serverless，index `xiaozhi-index`，namespace `xiaozhi-namespace`）。\n· 在线：用户问题向量化 → `EmbeddingStoreContentRetriever` 在向量库做**相似度检索**（`maxResults=1`，`minScore≥0.8`，低于阈值不返回）→ 命中的文档片段拼入上下文 → 模型基于知识回答。\n· 相关 Bean：`contentRetrieverXiaozhiPincone`（builder 模式装配 embeddingModel + embeddingStore）；另有一个被注释的 `contentRetrieverXiaozhi` 是 `InMemoryEmbeddingStore` 内存版备选。\n· 好处：回答有依据、可解释；知识更新只需改文档重新入库，不用重训模型。"},{"id":"prj-06","cat":"project","rel":true,"q":"为什么向量检索不用关键词搜索？为什么选 Pinecone？","a":"· 为什么向量检索：语义检索——用户说\"头痛挂什么科\"和知识库\"神经内科诊治头痛\"措辞不同也能匹配；关键词搜索遇到同义表述就失效。\n· 为什么 Pinecone：**托管式 Serverless**，免运维、自动扩缩容、自带 namespace 隔离，适合课程项目快速落地；\n· 对比：Milvus 开源可自建（需运维、适合大规模）；FAISS 是内存级库（需自己管理持久化）；Elasticsearch 8 支持向量但偏传统检索。\n· 备选方案：代码里还实现了 InMemoryEmbeddingStore 内存版，不配 Pinecone 也能跑，面试可提\"存储层抽象可替换\"。"},{"id":"prj-07","cat":"project","rel":true,"q":"多轮会话记忆是怎么实现的？为什么自研 ChatMemoryStore？","a":"· 使用 LangChain4j 的 `MessageWindowChatMemory`（滑动窗口 `maxMessages=20`），按 `memoryId` 隔离会话。\n· **关键：框架的持久化接口 `ChatMemoryStore` 是抽象，默认内存实现重启即丢**——我自定义 `MongoChatMemoryStore` 实现它：\n· `getMessages`：按 memoryId 查 MongoDB，用 `ChatMessageDeserializer.messagesFromJson` 反序列化；\n· `updateMessages`：`ChatMessageSerializer.messagesToJson` 序列化后用 `MongoTemplate.upsert` 写入；\n· `deleteMessages`：按 memoryId 删除。\n· 装配：`chatMemoryProviderXiaozhi` 返回 `MessageWindowChatMemory.builder().chatMemoryStore(mongoChatMemoryStore).maxMessages(20).build()`。\n· 效果：每次对话自动读历史 + 写回新消息，重启不丢，这是**不是只调 API 的 demo**的体现。"},{"id":"prj-08","cat":"project","rel":true,"q":"「问答 — 检索 — 挂号」业务闭环是怎么设计的？","a":"· 思路：模型负责**意图理解**，`@Tool` 工具负责**执行动作**，框架自动完成调度：\n1. 用户提问 → 系统提示词（`xiaozhi-prompt-template.txt`）约束人设\"蚂蚁小智\"与规则；\n2. 知识类问题 → RAG 检索知识库回答；\n3. 挂号类问题 → 模型判断要调用工具，抽取参数（姓名/身份证/科室/日期/时间）→ 框架执行 Java 方法 → 结果回传模型组织自然语言回复；\n· 工具清单：`bookAppointment`（预约挂号，先查号源并让用户确认）、`cancelAppointment`（取消预约）、`queryDepartment`（查询号源）、`CalculatorTools`（加法/平方根示例工具）。\n· 闭环：问诊 → 导诊 → 挂号/取消都走通，一次对话内完成。"},{"id":"prj-09","cat":"project","rel":true,"q":"项目里同时用了 MySQL 和 MongoDB，如何分工？","a":"· **MySQL**（库 `guiguxiaozhi`，表 `appointment`）：**强一致、事务**的预约业务数据——姓名/身份证/科室/日期/时间/医生，MyBatis-Plus 操作。\n· **MongoDB**（库 `chat_memory_db`）：**高频、结构灵活**的会话记忆——消息列表 JSON 序列化后整存整取，文档模型天然契合。\n· 理由：会话记录写入频繁、格式多变，MongoDB 的 upsert 和文档模型更合适；预约数据有业务约束（查重、删除），需要关系型数据库的保障。\n· 经验：**一致性要求高的业务数据放 MySQL，日志/会话/文档型数据放 MongoDB**。"},{"id":"prj-10","cat":"project","rel":true,"q":"预约挂号怎么防模型幻觉、防重复预约？","a":"· **字段约束**：系统提示词里写死规则——预约/取消前必须收集姓名（必选）、身份证号（必选）、科室（必选）、日期（必选）、时间（必选，上午/下午）、医生（可选），缺少就向用户追问，不编造。\n· **查重**：`bookAppointment` 落库前用 `appointmentService.getOne(appointment)` 按条件查库，**同科室同时间已有预约直接拒绝**，返回\"您在相同的科室和时间已有预约\"。\n· **防幻觉主键**：保存前显式 `appointment.setId(null)`，防止大模型编造 id 覆盖已有记录。\n· 取消同理：`cancelAppointment` 先查记录存在才删除，不存在则提示核对。\n· 号源工具提示：`@Tool value` 中引导模型先执行 `queryDepartment` 并让用户确认全部信息后再预约。"},{"id":"prj-11","cat":"project","rel":true,"q":"接口文档和测试是怎么做的？","a":"· 文档：集成 **Knife4j 4.3.0**（`knife4j-openapi3-jakarta`，OpenAPI 3），Controller 用 `@Tag`/`@Operation` 标注，启动后 `/doc.html` 在线调试，前端按文档联调。\n· 测试：`mvn test` 包含多种单元测试，覆盖 **AI 服务、会话记忆、MongoDB CRUD、RAG 检索、工具调用**等核心场景。\n· 思路：AI 链路里的确定性部分（记忆存取、查重、工具边界）重点测，模型本身只做集成验证。"},{"id":"prj-12","cat":"project","rel":true,"q":"介绍一下「实验教学项目管理系统」：整体功能和你负责的部分。","a":"· 定位：基于 `Spring Boot 2.2` + `MyBatis` + `MySQL 8` + `Vue 2 + Element UI` 改造的教学工作台，供管理员/教师管理课程课表、实验项目、实验室与报表。\n· 功能：管理员/教师登录与**任务范围隔离**；学期管理、课程与逐周课表、任务创建；实验项目增删改 + **Excel 导入**（幂等、重复行确认）；课表导入与批次核对；**学时/人时报表 + Excel 导出**；管理员**自然语言智能查询**（NL2SQL）。\n· 我负责后端：登录鉴权与范围隔离、智能查询链路（模型接入 + 查询计划 + SQL 守卫 + 只读执行）、统计报表与 Excel 导出。\n· 后端端口 9090（context-path `/springboote51e2`），前端 8081。"},{"id":"prj-13","cat":"project","rel":true,"q":"NL2SQL 的整体链路是怎么设计的？","a":"· 入口：`POST /teaching/ai/query`（仅管理员），参数只有 `question`，**拒绝客户端传 SQL**。\n· 链路：\n1. **本地 fallback 先拦截**：`TeachingAiQueryCompiler.fallback()` 用正则识别常见问题（\"一共有多少门课程\"\"X老师带几个班\"\"学时最多的10门\"等）→ 直接映射到预定义参数化 SQL，**模型不可用也能查**；\n2. 未命中 → 调模型（OpenAI 兼容接口，`temperature=0` + `response_format=json_object`）生成结果；\n3. **双模式解析**：模型输出含 `sql` 字段 → 走 SQL 守卫校验；否则按**查询计划**（JSON：intent/courseCode/courseName/limit/reason）编译；\n4. 校验失败 → 把错误信息回喂模型**修正一次**；\n5. 通过 → 独立**只读账号**执行 → 返回列名/行数据/是否截断 → 前端表格展示。"},{"id":"prj-14","cat":"project","rel":true,"q":"查询计划模式（Query Plan）和直接生成 SQL 模式有什么区别？为什么做两种？","a":"· **查询计划模式**（默认）：模型只输出 JSON 查询计划——`intent` 限定 8 种枚举（LIST_COURSES / COUNT_COURSES / LIST_TASKS / COUNT_TASKS / TASK_COUNT_BY_COURSE / PLANNED_HOURS_BY_COURSE / ENROLLMENT_BY_COURSE / UNSUPPORTED）+ courseCode / courseName / limit / reason；编译器把意图**映射到预定义参数化 SQL**（参数用 `?` 占位，PreparedStatement 绑定）。**模型永远不决定表名、列名、JOIN 和 SQL 片段**，幻觉面最小。\n· **模型 SQL 模式**：模型直接返回一条 SELECT，走 `TeachingAiSqlGuard.validate` 严格白名单校验后才执行，灵活性高。\n· 为什么两种：查询计划最安全但对新问题不灵活；直接 SQL 灵活但必须靠守卫兜底——**默认计划模式 + 灵活的 SQL 模式并存，用户问题分类处理**。\n· 字段严格校验：计划字段必须是精确集合（多一个少一个都拒绝），长度、整数范围也校验。"},{"id":"prj-15","cat":"project","rel":true,"q":"SQL 守卫（TeachingAiSqlGuard）具体做了哪些校验？","a":"· 解析层：`JSqlParser`（`CCJSqlParserUtil.parse`）必须能解析成合法的 `PlainSelect`；不支持 CTE、UNION、嵌套子查询（from 只能是 Table）、SELECT INTO、FOR UPDATE 等特殊选项。\n· 文本层：禁多语句（`;`）、注释（`--`/`/*`/`#`）、变量（`@`）、转义；禁 INTO / OUTFILE / DUMPFILE / PROCEDURE / LOCK / SLEEP / BENCHMARK / LOAD_FILE 等指令；SQL 长度 ≤ 12000。\n· 表/列：12 张**业务表白名单**（account / course / teaching_task / laboratory / schedule_detail 等）；敏感列黑名单（password / token / api_key / secret 等）。\n· 表达式：**函数白名单**（COUNT / SUM / AVG / MIN / MAX / ROUND / COALESCE / DATE_FORMAT 等）；禁 `SELECT *`；JOIN ≤ 6 且必须带 ON；表达式嵌套深度 ≤ 30；IN 列表 ≤ 100。\n· 强制约束：**自动补 `LIMIT`（≤ 201）**、禁 OFFSET 分页、最多查 30 列。\n· 校验通过后返回**规范化后的 SQL** 再执行——Fail Closed：任何一项不过直接拒绝。"},{"id":"prj-16","cat":"project","rel":true,"q":"为什么 AI 生成的 SQL 还需要独立只读账号？纵深防御怎么理解？","a":"· 原则：**AI 生成的代码不可信，白名单校验是第一层，权限是最后兜底**——即使校验有漏洞，只读账号也保证无法写库。\n· 执行层加固（`execute` 方法）：\n· 独立只读数据库账号（配置校验**禁止 root**）；\n· `connection.setReadOnly(true)` + `setAutoCommit(false)`；\n· JDBC URL 加 `allowMultiQueries=false` 防多语句；\n· `setQueryTimeout(5)` 防慢查询拖垮；`setMaxRows(201)` 防大结果集；`setMaxFieldSize(4000)` 防超长字段；\n· 错误统一转友好提示，**不把原始 SQL 异常抛给用户**。\n· 纵深防御四层：提示词约束 → 输出解析（JSON 字段白名单）→ AST 校验（守卫）→ 数据库权限（只读）。"},{"id":"prj-17","cat":"project","rel":true,"q":"提示词和数据库元数据是怎么设计的？","a":"· 两种提示词（`TeachingAiQueryCompiler` 内置）：\n· 查询计划模式：要求模型输出**严格 JSON**（精确字段集合、intent 枚举），带 4 个 few-shot 示例（课程总数/软件工程任务/学时最多10门/不支持场景如何回 UNSUPPORTED），并声明\"只查询 course 和 teaching_task\"。\n· SQL 模式：要求只返回 `{\"sql\":\"SELECT ...\"}`，禁 Markdown/解释/INSERT 等，最多 200 行、列用英文蛇形、名称用 LIKE、不查敏感字段。\n· 元数据（`metadata()`）：启动后动态从 `information_schema.COLUMNS` 读**表名+字段+类型+中文注释**、从 KEY_COLUMN_USAGE 读**外键关联**，拼进提示词；**敏感字段（password/token/api_key/secret）在元数据里直接过滤**，模型根本看不到。\n· 关键约束：`temperature=0` + `response_format=json_object` 让输出稳定可解析。"},{"id":"prj-18","cat":"project","rel":true,"q":"模型出错、请求失败、回答不了时，有哪些降级与重试策略？","a":"· **本地 fallback 优先**：任何问题先过正则意图识别，命中就直接执行，**模型挂了也能查常用统计**；\n· **校验失败重试一次**：模型输出不合格（SQL 守卫报错 / 计划字段不合法）→ 把错误信息作为修正指令回喂模型，要求\"只返回修正后的 JSON\"，二次仍失败才报错；\n· **UNSUPPORTED 兜底**：模型判断答不了 → 再试本地 fallback，仍不行则返回原因（如\"当前演示版尚未开放实验室和排课表\"），**不编造结果**；\n· **超时与异常**：连接超时 5s、读超时 25s；HTTP 非 2xx / 网络异常统一转友好提示并记录日志；\n· 模糊输入：回答中明确\"本学期/去年\"这类时间表述先被识别为不支持（`hasUnsupportedTimeScope`），引导用户明确范围。"},{"id":"prj-19","cat":"project","rel":true,"q":"登录鉴权和数据范围隔离是怎么做的？","a":"· `TeachingAccess` 统一鉴权：Session 校验 → 区分 `users`（管理员）与 `teacher` 表 → 再到 `account` 表核对 role；**缺失 scope 绝不等于管理员**（Fail Closed）。\n· 智能查询：`requireAdmin`，**仅管理员可用**，教师调用返回 403；\n· 教师范围隔离：查询任务/报表时拼 `EXISTS (SELECT 1 FROM teaching_task_teacher own WHERE own.task_id=t.id AND own.teacher_account_id=?)`，**教师只能看本人教学范围**；\n· 学期只读：非当前开放学期（status=OPEN 且等于当前学年学期）只读，历史数据不可编辑；\n· 登录态：随机初始密码 + 修改密码，密码不落 Git。"},{"id":"prj-20","cat":"project","rel":true,"q":"统计报表和 Excel 导出是怎么实现的？","a":"· 指标口径：**教学人时 = 实验室实际排课学时 × 任务选课人数**；项目按教学任务关联的排课实验室归属，全部实验室汇总时同一项目只列一次（用 EXISTS 去重，避免按排课行重复）。\n· 筛选：按学年、学期、实验室（可空=全部）；管理员含未排课实验室（学时/人时为 0），教师只统计本人范围。\n· 数据核对：单独查\"计划学时 vs 实际排课学时\"差异并生成警告（提醒数据不一致）。\n· Excel 导出：基于 15 列**官方模板**（`teaching-project-collection.xlsx` 打包进 JAR），保留表头/列宽/填写说明，按记录数扩展数据行；实验者人数用已确认的参与人数（未知留空），不用选课人数代替。"},{"id":"prj-21","cat":"project","rel":true,"q":"两个项目分别用了 Spring Boot 3.5 和 2.2，两者有什么需要注意的区别？","a":"· **XiaoZhiAPP（Boot 3.5.11 / Java 17）**：Jakarta EE（`javax.*` → `jakarta.*`）、Spring Framework 6、Knife4j 用 `openapi3-jakarta` 包、搭配 LangChain4j 1.x；\n· **shixian（Boot 2.2 / Java 8）**：`javax.*`、Servlet API 旧版、兼容老中间件与 Vue 2 前后端分离；\n· 实际注意点：\n· 依赖兼容（WebFlux/LangChain4j 对 Spring Boot 3 有版本要求）；\n· 配置项差异（如资源映射、servlet 上下文路径写法）；\n· 迁移时 `javax` → `jakarta` 批量替换 + 第三方库升级；\n· 面试加分：能说出版本差异说明你关注工程细节、不是只跑通一个模板。"},{"id":"prj-22","cat":"project","rel":true,"q":"如何验证 AI 查询结果的准确性？有评测手段吗？","a":"· **确定性输出**：`temperature=0` + `response_format=json_object` + 意图/字段枚举白名单，让模型输出尽量稳定可解析；\n· **规则兜底**：SQL 守卫在**执行前**拦截不合法查询，执行中限时/限行，错误统一提示；\n· **回归测试**：`TeachingAiQueryCompiler` 的关键意图、正则 fallback、守卫校验都有单测；`tools/database/tests` 有解析器单元测试，`smoke_teaching.py` 做 HTTP 联调；\n· **示例问题库**：提示词内置 4 组典型问答对（few-shot），既提高准确率也是可复现的验收用例；\n· 局限：模型生成 SQL 可能列名/字段不正确，执行失败会走修正重试，最终以\"查询能否安全执行 + 列数据是否合理\"作为验收。"},{"id":"prj-23","cat":"project","rel":true,"q":"两个项目在并发和扩展性上有哪些考虑？","a":"· **XiaoZhiAPP**：会话记忆按 memoryId 隔离、服务无状态，可水平扩展；记忆存储接口 `ChatMemoryStore` 已抽象，可换 Redis；流式输出降低首字延迟；\n· **shixian**：AI 只读连接独立于主库，防慢查询拖垮业务；查询限 200 行、5s 超时；报表走聚合 SQL；\n· 可改进点（坦诚）：shixian 的模型调用是同步 RestTemplate，生产可换 WebClient 异步 + 接口限流；XiaoZhiAPP 未做限流与熔断，生产需补。\n· 面试表述：先讲已做的隔离/抽象，再主动说改进方向，体现思考深度。"},{"id":"prj-24","cat":"project","rel":true,"q":"项目里有哪些坑或还没完成的部分？被追问时怎么回答？","a":"· **XiaoZhiAPP**：\n· `queryDepartment`（查询号源）目前是 TODO 占位**固定返回 true**，没有真实排班逻辑——简历没写号源查询，就说\"预约/取消已实现，号源查询是下一步计划\"；\n· 数据是**模拟的**（模拟协和医院），不是真实医院系统，不吹\"已上线/服务真实医院\"；\n· RAG `maxResults=1 + minScore=0.8`，知识库查不到会拒答——这是设计不是 bug；\n· **shixian**：NL2SQL 只开放管理员；模型 SQL 模式灵活但依赖守卫质量；\n· 原则：被追问诚实说明，不硬编；强调已实现部分的完整性与防护设计。"}];
+
+/* ================= 分类元数据 ================= */
+const CATS = {
+  java:{name:'Java 核心基础',desc:'OOP / String / 异常 / 反射 / 注解',icon:'J'},
+  collection:{name:'集合框架',desc:'List / Map / 并发集合',icon:'C'},
+  jvm:{name:'JVM',desc:'内存 / 类加载 / GC / 调优',icon:'V'},
+  concurrency:{name:'并发编程',desc:'volatile / 锁 / 线程池 / AQS',icon:'K'},
+  spring:{name:'Spring & Boot',desc:'IoC / AOP / 事务 / 自动装配',icon:'S'},
+  mybatis:{name:'MyBatis',desc:'映射 / 动态SQL / 缓存 / 插件',icon:'M'},
+  mysql:{name:'MySQL',desc:'事务 / 索引 / 锁 / 优化',icon:'Q'},
+  redis:{name:'Redis',desc:'数据结构 / 缓存 / 持久化',icon:'R'},
+  network:{name:'网络 & HTTP',desc:'TCP / RESTful / SSE / 状态码',icon:'N'},
+  project:{name:'简历项目深挖',desc:'RAG / NL2SQL / WebFlux / SSE',icon:'P'}
+};
+const CAT_ORDER = ['java','collection','jvm','concurrency','spring','mybatis','mysql','redis','network','project'];
+
+/* ================= 学习状态（localStorage） ================= */
+const LS_KEY = 'baguwen_ide_state_v1';
+const store = loadStore();
+function loadStore(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw) return Object.assign({mastery:{},fav:{},mocks:[],today:{}}, JSON.parse(raw));
+  }catch(e){}
+  return {mastery:{},fav:{},mocks:[],today:{}};
+}
+function saveStore(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(store)); }catch(e){}
+}
+function markQ(qid, level){
+  if(level === null) delete store.mastery[qid];
+  else store.mastery[qid] = level;
+  saveStore(); refreshChrome();
+}
+function toggleFav(qid){
+  if(store.fav[qid]) delete store.fav[qid];
+  else store.fav[qid] = 1;
+  saveStore(); refreshChrome();
+}
+function todayCount(){
+  const d = new Date();
+  const key = d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+  if(store.today && store.today.key === key) return store.today.n || 0;
+  return 0;
+}
+function addToday(){
+  const d = new Date();
+  const key = d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+  if(!store.today) store.today = {};
+  if(store.today.key === key) store.today.n = (store.today.n||0)+1;
+  else store.today = {key:key, n:1};
+  saveStore();
+}
+
+/* ================= 派生统计 ================= */
+function catStats(cid){
+  const qs = QUESTIONS.filter(q=>q.cat===cid);
+  const total = qs.length;
+  let know=0,fuzzy=0,bad=0;
+  qs.forEach(q=>{
+    const m = store.mastery[q.id];
+    if(m==='know') know++;
+    else if(m==='fuzzy') fuzzy++;
+    else if(m==='unknown') bad++;
+  });
+  const done = know+fuzzy+bad;
+  return {total, know, fuzzy, bad, done, rate: total? Math.round(done/total*100):0};
+}
+function overall(){
+  const total = QUESTIONS.length;
+  let know=0,fuzzy=0,bad=0;
+  QUESTIONS.forEach(q=>{
+    const m = store.mastery[q.id];
+    if(m==='know') know++;
+    else if(m==='fuzzy') fuzzy++;
+    else if(m==='unknown') bad++;
+  });
+  return {total, know, fuzzy, bad, done:know+fuzzy+bad,
+    rate: total? Math.round((know+fuzzy+bad)/total*100):0,
+    knowRate: total? Math.round(know/total*100):0};
+}
+
+/* ================= 工具 ================= */
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function hl(text, kw){
+  if(!kw) return text;
+  const safe = esc(kw);
+  const parts = String(text).split(safe);
+  return parts.join('<mark>'+safe+'</mark>');
+}
+function $(s,el){return (el||document).querySelector(s)}
+function $$(s,el){return Array.from((el||document).querySelectorAll(s))}
+function statusDot(qid){
+  const m = store.mastery[qid];
+  const color = m==='know'?'var(--ok)':m==='fuzzy'?'var(--warn)':m==='unknown'?'var(--bad)':'var(--line-2)';
+  return '<span class="st" style="background:'+color+'"></span>';
+}
+function statusChip(qid){
+  const m = store.mastery[qid];
+  if(m==='know') return '<span class="chip ok">已掌握</span>';
+  if(m==='fuzzy') return '<span class="chip warn">模糊</span>';
+  if(m==='unknown') return '<span class="chip bad">待巩固</span>';
+  return '<span class="chip ghost">未刷</span>';
+}
+
+/* 轻量答案渲染：代码块 + 行内代码 + 加粗 + 列表 */
+function renderAnswer(text){
+  const lines = String(text).split('\n');
+  let html = '', inCode = false, inList = false;
+  const closeList = ()=>{ if(inList){ html += '</ul>'; inList = false; } };
+  for(const raw of lines){
+    const line = raw.replace(/\s+$/,'');
+    if(line.trim().startsWith('```')){
+      closeList();
+      if(inCode){ html += '</code></pre>'; inCode = false; }
+      else { html += '<pre><code>'; inCode = true; }
+      continue;
+    }
+    if(inCode){ html += esc(line) + '\n'; continue; }
+    if(line.trim()===''){ closeList(); continue; }
+    const t = line.trim();
+    const isBullet = /^[-•·]\s+/.test(t) || /^(\d+)[.、]\s+/.test(t);
+    if(isBullet){
+      if(!inList){ html += '<ul>'; inList = true; }
+      const li = t.replace(/^[-•·]\s+/, '').replace(/^(\d+)[.、]\s+/, '');
+      html += '<li>' + inline(li) + '</li>';
+      continue;
+    }
+    closeList();
+    html += '<p>' + inline(t) + '</p>';
+  }
+  closeList();
+  if(inCode) html += '</code></pre>';
+  return html;
+}
+function inline(s){
+  return esc(s)
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/(\*\*|`)/g, '');
+}
+
+/* ================= 路由 ================= */
+let currentRoute = '#/dashboard';
+function parseRoute(){
+  const h = location.hash || '#/dashboard';
+  const [path, query] = h.split('?');
+  return {path, query: new URLSearchParams(query||'')};
+}
+function go(route){ location.hash = route; }
+window.addEventListener('hashchange', ()=>{ render(); });
+function render(){
+  const {path, query} = parseRoute();
+  currentRoute = path;
+  $$('#topNav button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.route === path);
+  });
+  const app = $('#app');
+  app.classList.remove('fade-in');
+  void app.offsetWidth;
+  app.classList.add('fade-in');
+  if(path === '#/dashboard') renderDashboard(app);
+  else if(path === '#/bank') renderBank(app, query);
+  else if(path === '#/flash') renderFlash(app);
+  else if(path === '#/mock') renderMock(app);
+  else if(path === '#/mine') renderMine(app);
+  else { location.hash = '#/dashboard'; return; }
+  renderTree(path, query);
+  refreshChrome();
+  app.scrollTop = 0;
+  window.scrollTo && window.scrollTo(0,0);
+  closeSidebar();
+}
+function refreshChrome(){
+  const o = overall();
+  $('#stTotal').textContent = o.total;
+  $('#stKnow').textContent = o.know;
+  $('#stFuzzy').textContent = o.fuzzy;
+  $('#stBad').textContent = o.bad;
+  $('#stFav').textContent = Object.keys(store.fav).length;
+  $('#stDate').textContent = new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'short'});
+  $('#heatToday').textContent = todayCount();
+  $('#heatRate').textContent = o.knowRate + '%';
+  $('#stRoute').textContent = currentRoute.replace('#/','');
+  $('#treeTotal').textContent = o.total + ' 题';
+}
+
+/* ================= 侧边栏工程树 ================= */
+function renderTree(path, query){
+  const tree = $('#tree');
+  const curCat = query.get('cat') || '';
+  const curQ = query.get('q') || '';
+  let html = '';
+  CAT_ORDER.forEach(cid=>{
+    const c = CATS[cid];
+    const s = catStats(cid);
+    const open = (path === '#/bank' && (curCat === cid || (curCat==='' && !curQ))) || s.done===0 ? false : false;
+    // 自动展开：题库页当前分类；闪卡/模拟等场景保持折叠
+    const isOpen = (path === '#/bank' && curCat === cid) || (path === '#/bank' && !curCat && cid==='java');
+    html += '<div class="tree-group'+(isOpen?' open':'')+'" data-cat="'+cid+'">';
+    html += '<button class="tree-cat" data-action="toggle-cat" data-cat="'+cid+'">';
+    html += '<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>';
+    html += '<span class="name">'+c.name+'</span>';
+    if(s.rate>0 && s.rate<100) html += '<span class="badge" style="background:var(--warn-soft);color:var(--warn)">'+s.rate+'%</span>';
+    else if(s.rate===100) html += '<span class="badge" style="background:var(--ok-soft);color:var(--ok)">100%</span>';
+    html += '<span class="meta">'+s.done+'/'+s.total+'</span></button>';
+    html += '<div class="tree-qlist">';
+    QUESTIONS.filter(q=>q.cat===cid).forEach(q=>{
+      html += '<button class="tree-q'+(curQ===q.id?' active':'')+'" data-action="open-q" data-cat="'+cid+'" data-q="'+q.id+'">';
+      html += statusDot(q.id);
+      html += '<span class="txt">'+esc(q.q)+'</span>';
+      if(q.rel) html += '<span class="rel">简历</span>';
+      html += '</button>';
+    });
+    html += '</div></div>';
+  });
+  tree.innerHTML = html;
+  const foot = $('#treeFoot');
+  foot.textContent = '// 总览 '+overall().total+' 题 · 分类刷题 · 模拟面试';
+}
+
+/* ================= 事件委托 ================= */
+document.addEventListener('click', function(e){
+  const el = e.target.closest('[data-action],[data-route]');
+  if(!el) return;
+  if(el.hasAttribute('data-route')){ go(el.dataset.route); return; }
+  const action = el.dataset.action;
+  if(action === 'toggle-cat'){
+    const g = el.closest('.tree-group');
+    g.classList.toggle('open');
+  }
+  else if(action === 'open-q'){
+    go('#/bank?cat='+el.dataset.cat+'&q='+el.dataset.q);
+  }
+  else if(action === 'toggle-sidebar'){
+    $('#sidebar').classList.toggle('open');
+    $('#mask').classList.toggle('show');
+  }
+  else if(action === 'mark'){
+    markQ(el.dataset.q, el.dataset.level === 'none' ? null : el.dataset.level);
+    renderBankDetail();
+    // 若在闪卡/模拟中，更新按钮态
+    const flash = $('#flashArea'); if(flash) renderFlashArea();
+  }
+  else if(action === 'fav'){
+    toggleFav(el.dataset.q);
+    renderBankDetail();
+    const fa = $('#flashArea'); if(fa) renderFlashArea();
+  }
+  else if(action === 'flash-next'){ flashNext(); }
+  else if(action === 'flash-flip'){ flashFlip(); }
+  else if(action === 'flash-mark'){ flashMark(el.dataset.level); }
+  else if(action === 'flash-restart'){ flashStart(); }
+  else if(action === 'flash-fav'){ toggleFav(el.dataset.q); const _fa = $('#flashArea'); if(_fa) renderFlashArea(); }
+  else if(action === 'mock-start'){ mockStart(); }
+  else if(action === 'mock-flip'){ mockFlip(); }
+  else if(action === 'mock-mark'){ mockMark(el.dataset.level); }
+  else if(action === 'mock-next'){ mockNext(); }
+  else if(action === 'mock-finish'){ mockFinish(); }
+  else if(action === 'mock-restart'){ location.hash = '#/mock'; }
+  else if(action === 'mock-pause'){ mockPause(); }
+  else if(action === 'nav-bank'){ go('#/bank?cat='+(el.dataset.cat||'')); }
+  else if(action === 'route'){ go(el.dataset.to); }
+  else if(action === 'mine-tab'){ renderMine($('#app'), el.dataset.tab); }
+  else if(action === 'clear-mocks'){
+    store.mocks = []; saveStore(); renderMine($('#app'));
+  }
+});
+document.addEventListener('keydown', function(e){
+  if(currentRoute === '#/flash' && $('#flashArea')){
+    if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); flashFlip(); }
+    if(e.key === '1') flashMark('know');
+    if(e.key === '2') flashMark('fuzzy');
+    if(e.key === '3') flashMark('unknown');
+  }
+});
+function closeSidebar(){
+  $('#sidebar').classList.remove('open');
+  $('#mask').classList.remove('show');
+}
+
+/* ================= 视图：总览 ================= */
+function ringHTML(rate, color){
+  const r = 56, c = 2*Math.PI*r;
+  const off = c * (1 - Math.min(rate,100)/100);
+  return '<div class="ring"><svg width="128" height="128" viewBox="0 0 128 128">'
+    +'<circle cx="64" cy="64" r="'+r+'" fill="none" stroke="var(--panel-2)" stroke-width="11"/>'
+    +'<circle cx="64" cy="64" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="11" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+off+'"/>'
+    +'</svg><div class="ring-num"><b>'+rate+'%</b><span>进度</span></div></div>';
+}
+function renderDashboard(app){
+  const o = overall();
+  const skills = ['Java 面向对象','集合 / IO / 反射','JDK 1.8 · 注解 · AOP','Spring Boot / MyBatis','MySQL / MongoDB / Redis','LangChain4j / WebFlux','SSE 流式 · RESTful','Docker / Nginx / Maven / Git'];
+  let catBars = '';
+  CAT_ORDER.forEach(cid=>{
+    const s = catStats(cid);
+    const rel = QUESTIONS.filter(q=>q.cat===cid && q.rel).length;
+    catBars += '<div class="cat-prog-row">'
+      +'<div class="cat-prog-top"><span class="cname">'+CATS[cid].name+(rel?' <span class="chip accent" style="padding:0 6px;font-size:9.5px">简历关联 '+rel+'</span>':'')+'</span>'
+      +'<span class="cmeta">已刷 <b>'+s.done+'</b> / '+s.total+'</span></div>'
+      +'<div class="progress"><span style="width:'+s.rate+'%"></span></div></div>';
+  });
+  app.innerHTML =
+  '<section class="dash-hero">'
+    +'<div class="card profile-card">'
+      +'<div class="profile-top"><img class="profile-photo" src="https://aka.doubaocdn.com/s/yul3EV46EV" alt="易龙宇证件照">'
+      +'<div><h1>易龙宇</h1><div class="role">JAVA 开发工程师 · 校招</div><div class="chip ghost" style="margin-top:6px">合肥大学 · 软件工程 · 2027 届</div></div></div>'
+      +'<div class="profile-meta"><span>年龄 <b>22</b></span><span>政治面貌 <b>中共党员</b></span><span>城市 <b>合肥</b></span><span>英语 <b>CET-6</b></span></div>'
+      +'<div class="profile-tags">'+skills.map(s=>'<span class="skill-tag">'+s+'</span>').join('')+'</div>'
+    +'</div>'
+    +'<div class="dash-right">'
+      +'<div class="welcome-line">你好，<b>易龙宇</b>。你的目标岗位是 <b style="color:var(--accent)">Java 开发工程师</b>，题库已按简历技能与项目深度定制：<b>'+o.total+' 题</b>，其中 <b style="color:var(--accent)">简历项目深挖 '+catStats('project').total+' 题</b>。今天也保持刷题的节奏吧。</div>'
+      +'<div class="stat-row">'
+        +'<div class="card stat-card know"><span class="lbl">已掌握</span><span class="val">'+o.know+'<small>/ '+o.total+'</small></span><span class="foot">可流畅作答</span></div>'
+        +'<div class="card stat-card fuzzy"><span class="lbl">模糊</span><span class="val">'+o.fuzzy+'</span><span class="foot">需要再复习</span></div>'
+        +'<div class="card stat-card bad"><span class="lbl">待巩固</span><span class="val">'+o.bad+'</span><span class="foot">答不出 / 易错</span></div>'
+        +'<div class="card stat-card todo"><span class="lbl">模拟面试</span><span class="val">'+store.mocks.length+'<small> 次</small></span><span class="foot">最近：'+((store.mocks[store.mocks.length-1])? store.mocks[store.mocks.length-1].date : '暂无')+'</span></div>'
+      +'</div>'
+    +'</div>'
+  +'</section>'
+  +'<div class="dash-cols">'
+    +'<div class="card progress-card"><h3>'+ic('chart')+'分类掌握进度</h3><div class="cat-prog">'+catBars+'</div></div>'
+    +'<div style="display:flex;flex-direction:column;gap:14px">'
+      +'<div class="card progress-card" style="display:flex;align-items:center;gap:22px">'
+        +'<div style="text-align:center">'+ringHTML(o.rate,'var(--accent)')+'</div>'
+        +'<div style="flex:1;font-size:12.5px;color:var(--ink-2);line-height:1.9">'
+          +'<div>掌握率：<b style="color:var(--ok)">'+o.knowRate+'%</b></div>'
+          +'<div>已刷 <b>'+o.done+'</b> / '+o.total+' 题</div>'
+          +'<div>待巩固：<b style="color:var(--bad)">'+o.bad+'</b> 题 · 模糊：<b style="color:var(--warn)">'+o.fuzzy+'</b> 题</div>'
+          +'<div style="margin-top:8px"><button class="btn primary sm" data-action="route" data-to="#/flash">继续刷题</button> <button class="btn sm" data-action="route" data-to="#/mock">模拟面试</button></div>'
+        +'</div>'
+      +'</div>'
+      +'<div class="card quick-card"><h3>'+ic('bolt')+'快捷入口</h3>'
+        +'<button class="quick-item" data-action="nav-bank" data-cat="project"><span class="qi-icon">'+ic('rocket')+'</span><span><span class="qi-t" style="display:block">简历项目深挖</span><span class="qi-d">基于你的两个 AI 项目定制追问</span></span><span class="go">→</span></button>'
+        +'<button class="quick-item" data-action="nav-bank" data-cat=""><span class="qi-icon">'+ic('book')+'</span><span><span class="qi-t" style="display:block">全部题库</span><span class="qi-d">10 大分类 · '+o.total+' 道真题</span></span><span class="go">→</span></button>'
+        +'<button class="quick-item" data-action="route" data-to="#/mine"><span class="qi-icon">'+ic('star')+'</span><span><span class="qi-t" style="display:block">我的学习</span><span class="qi-d">错题本 · 收藏 · 模拟记录</span></span><span class="go">→</span></button>'
+      +'</div>'
+    +'</div>'
+  +'</div>'
+  +'<div class="hint-band">'+ic('info')
+    +'<span><b>使用建议：</b>先按分类浏览题库熟悉考点，再用闪卡模式快速过一遍，最后进入模拟面试检验真实水平。简历相关题目带 <b style="color:var(--accent)">简历</b> 标记，是面试官最可能追问的方向。</span>'
+  +'</div>';
+}
+function ic(name){
+  const paths = {
+    chart:'<path d="M18 20V10M12 20V4M6 20v-6"/>',
+    bolt:'<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+    rocket:'<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
+    book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+    star:'<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>',
+    info:'<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4"/>'
+  };
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+paths[name]+'</svg>';
+}
+
+/* ================= 视图：题库 ================= */
+let bankSearch = '';
+function renderBank(app, query){
+  const curCat = query.get('cat') || '';
+  const curQ = query.get('q') || '';
+  let list = QUESTIONS;
+  if(curCat) list = list.filter(q=>q.cat===curCat);
+  if(bankSearch) list = list.filter(q=>q.q.includes(bankSearch) || q.a.includes(bankSearch));
+  const qsHtml = list.length ? list.map((q,i)=>(
+    '<button class="qitem" data-action="open-q" data-cat="'+q.cat+'" data-q="'+q.id+'">'
+    +statusDot(q.id)
+    +'<span class="qidx">'+String(i+1).padStart(2,'0')+'</span>'
+    +'<span class="qmain"><span class="qtitle">'+hl(esc(q.q), bankSearch)+'</span>'
+    +'<span class="qsub">'+CATS[q.cat].name+(q.rel?' · 简历关联':'')+'</span></span>'
+    +(store.fav[q.id]?'<svg style="width:15px;height:15px;color:var(--warn)" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>':'')
+    +'<svg class="chev" style="width:15px;height:15px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>'
+    +'</button>'
+  )).join('') : '<div class="empty"><b>没有匹配的题目</b>换个关键词试试</div>';
+
+  app.innerHTML =
+  '<div class="bank-layout">'
+    +'<div class="bank-list">'
+      +'<div class="bank-toolbar">'
+        +'<div class="search-box">'+ic('bolt').replace('<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>','<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>')+'<input id="searchInput" placeholder="搜索题目或答案关键词，如：HashMap、事务、RAG…" value="'+esc(bankSearch)+'"></div>'
+        +'<span class="bank-rc">'+(bankSearch?'搜索到 <b style="color:var(--accent)">'+list.length+'</b> 题':'共 '+list.length+' 题')+'</span>'
+        +'<button class="btn sm" data-action="route" data-to="#/flash">闪卡模式</button>'
+        +'<button class="btn sm" data-action="route" data-to="#/mock">模拟面试</button>'
+      +'</div>'
+      + (curQ ? '' : qsHtml)
+    +'</div>'
+  +'</div>';
+  const si = $('#searchInput');
+  if(si){
+    si.addEventListener('input', function(){
+      bankSearch = si.value.trim();
+      render();
+    });
+  }
+  if(curQ){
+    const q = QUESTIONS.find(x=>x.id===curQ);
+    if(q){
+      const catQs = QUESTIONS.filter(x=>x.cat===q.cat);
+      const idx = catQs.findIndex(x=>x.id===q.id);
+      const prev = catQs[idx-1], next = catQs[idx+1];
+      const rel = q.rel ? '<div class="detail-rel">'+ic('bolt')+'简历关联考点 —— 面试官可能围绕这个追问</div>' : '';
+      app.innerHTML =
+      '<div class="detail">'
+        +'<div class="detail-tab"><span class="file-dot"></span>'+CATS[q.cat].name+' / <span class="path">'+q.id+'.java</span></div>'
+        +'<div class="detail-body">'
+          +'<div class="detail-q">'+esc(q.q)+'</div>'
+          +rel
+          +'<div class="answer-label">参考答案</div>'
+          +'<div class="answer">'+renderAnswer(q.a)+'</div>'
+        +'</div>'
+        +'<div class="detail-actions">'
+          +'<button class="mark-btn'+(store.mastery[q.id]==='know'?' on-ok':'')+'" data-action="mark" data-q="'+q.id+'" data-level="know">✓ 已掌握</button>'
+          +'<button class="mark-btn'+(store.mastery[q.id]==='fuzzy'?' on-warn':'')+'" data-action="mark" data-q="'+q.id+'" data-level="fuzzy">～ 模糊</button>'
+          +'<button class="mark-btn'+(store.mastery[q.id]==='unknown'?' on-bad':'')+'" data-action="mark" data-q="'+q.id+'" data-level="unknown">✕ 不会</button>'
+          +'<button class="mark-btn'+(store.mastery[q.id]?'':'')+'" data-action="mark" data-q="'+q.id+'" data-level="none">清除标记</button>'
+          +'<button class="mark-btn'+(store.fav[q.id]?' on-fav':'')+'" data-action="fav" data-q="'+q.id+'">'+(store.fav[q.id]?'★ 已收藏':'☆ 收藏')+'</button>'
+        +'</div>'
+        +'<div class="detail-nav">'
+          +'<button class="nav-btn" data-action="open-q" data-cat="'+q.cat+'" data-q="'+(prev?prev.id:'')+'" '+(prev?'':'disabled')+'>← 上一题</button>'
+          +'<span>'+CATS[q.cat].name+' · '+(idx+1)+' / '+catQs.length+'</span>'
+          +'<button class="nav-btn" data-action="open-q" data-cat="'+q.cat+'" data-q="'+(next?next.id:'')+'" '+(next?'':'disabled')+'>下一题 →</button>'
+        +'</div>'
+      +'</div>';
+    } else {
+      app.innerHTML = '<div class="empty"><b>题目不存在</b><a href="#/bank" style="color:var(--accent)">返回题库</a></div>';
+    }
+  }
+}
+function renderBankDetail(){
+  const {query} = parseRoute();
+  if(query.get('q')) renderBank($('#app'), query);
+}
+
+/* ================= 视图：闪卡 ================= */
+let flashState = {cat:'', list:[], idx:0, flipped:false, done:false};
+function renderFlash(app){
+  app.innerHTML =
+  '<div class="flash-wrap">'
+    +'<div class="flash-config">'
+      +'<span class="fc-label">分类</span>'
+      +'<select class="select" id="flashCat">'
+        +'<option value="">全部（'+overall().total+' 题）</option>'
+        +CAT_ORDER.map(c=>'<option value="'+c+'"'+(flashState.cat===c?' selected':'')+'>'+CATS[c].name+'（'+catStats(c).total+' 题）</option>').join('')
+      +'</select>'
+      +'<button class="btn primary sm" data-action="flash-start" id="flashStart">开始闪卡</button>'
+      +'<span style="font-size:11.5px;color:var(--ink-3)">空格翻面 · 1/2/3 快速标记</span>'
+    +'</div>'
+    +'<div id="flashArea"></div>'
+  +'</div>';
+  $('#flashCat').addEventListener('change', function(){
+    flashState.cat = this.value;
+    $('#flashStart').textContent = '开始闪卡';
+    $('#flashArea').innerHTML = '';
+  });
+  $('#flashStart').addEventListener('click', flashStart);
+}
+function flashStart(){
+  const cat = flashState.cat;
+  let list = cat ? QUESTIONS.filter(q=>q.cat===cat) : QUESTIONS.slice();
+  // 优先把 待巩固/模糊 的放前面
+  list.sort((a,b)=>{
+    const wa = store.mastery[a.id]==='unknown'?0:store.mastery[a.id]==='fuzzy'?1:2;
+    const wb = store.mastery[b.id]==='unknown'?0:store.mastery[b.id]==='fuzzy'?1:2;
+    return wa-wb;
+  });
+  if(!list.length) return;
+  flashState = {cat, list, idx:0, flipped:false, done:false};
+  renderFlashArea();
+}
+function renderFlashArea(){
+  const area = $('#flashArea');
+  if(!area) return;
+  const s = flashState;
+  if(s.done || s.idx >= s.list.length){
+    const r = {know:0, fuzzy:0, bad:0};
+    s.list.forEach(q=>{ const m=store.mastery[q.id]; if(m==='know')r.know++; else if(m==='fuzzy')r.fuzzy++; else if(m==='unknown')r.bad++; });
+    area.innerHTML = '<div class="card flash-done">'
+      +'<h3>本轮完成</h3><p>共刷 '+s.list.length+' 题</p>'
+      +ringHTML(Math.round((r.know+r.fuzzy)/s.list.length*100),'var(--ok)')
+      +'<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><span class="chip ok">掌握 '+r.know+'</span><span class="chip warn">模糊 '+r.fuzzy+'</span><span class="chip bad">待巩固 '+r.bad+'</span></div>'
+      +'<p style="margin-top:16px"><button class="btn primary" data-action="flash-restart">再来一轮</button></p>'
+    +'</div>';
+    return;
+  }
+  const q = s.list[s.idx];
+  area.innerHTML =
+  '<div class="card flash-card fade-in" id="flashCard">'
+    +'<div class="flash-head">'
+      +'<span>'+CATS[q.cat].name+(q.rel?' · 简历关联':'')+'</span>'
+      +'<span class="fbar"><span style="width:'+Math.round(s.idx/s.list.length*100)+'%"></span></span>'
+      +'<span>'+(s.idx+1)+' / '+s.list.length+'</span>'
+    +'</div>'
+    +'<div class="flash-body">'
+      +'<div class="flash-q">'+esc(q.q)+'</div>'
+      +(s.flipped?'':'<div class="flash-hint">先在脑中组织答案，再点击下方「显示答案」对照</div>')
+      +(s.flipped?'<div class="flash-ans"><div class="answer-label">参考答案</div><div class="answer">'+renderAnswer(q.a)+'</div></div>':'')
+    +'</div>'
+    +'<div class="flash-actions">'
+      +(s.flipped
+        ? '<button class="btn ok sm" data-action="flash-mark" data-level="know" style="background:var(--ok);border-color:var(--ok);color:#fff">✓ 会了</button>'
+          +'<button class="btn warn sm" data-action="flash-mark" data-level="fuzzy" style="background:var(--warn);border-color:var(--warn);color:#fff">～ 模糊</button>'
+          +'<button class="btn bad sm" data-action="flash-mark" data-level="unknown" style="background:var(--bad);border-color:var(--bad);color:#fff">✕ 不会</button>'
+        : '<button class="btn primary" data-action="flash-flip">显示答案</button>')
+      +'<button class="btn ghost sm" data-action="flash-fav" data-q="'+q.id+'">'+(store.fav[q.id]?'★ 已收藏':'☆ 收藏')+'</button>'
+    +'</div>'
+  +'</div>';
+}
+function flashFlip(){
+  if(flashState.done) return;
+  flashState.flipped = true;
+  renderFlashArea();
+}
+function flashMark(level){
+  const q = flashState.list[flashState.idx];
+  markQ(q.id, level);
+  addToday();
+  flashState.idx++;
+  flashState.flipped = false;
+  renderFlashArea();
+}
+
+/* ================= 视图：模拟面试 ================= */
+let mockState = {phase:'setup', count:10, cats:null, list:[], idx:0, flipped:false, timer:0, timerInt:null, paused:false};
+function renderMock(app){
+  app.innerHTML =
+  '<div class="mock-wrap">'
+    +(mockState.phase==='setup'
+      ? '<div class="mock-setup card"><div style="padding:6px 4px 4px">'
+          +'<h2 style="font-size:17px;margin-bottom:4px">模拟面试</h2>'
+          +'<p style="font-size:12.5px;color:var(--ink-2);margin-bottom:10px">按真实面试节奏随机抽题，先想再对答案，最后给出掌握度报告与复习建议。</p>'
+        +'</div>'
+        +'<div class="mock-row"><span class="ml">题目数量</span><div class="mc">'
+          +[5,10,15].map(n=>'<button class="opt'+(mockState.count===n?' on':'')+'" data-action="mock-count" data-n="'+n+'">'+n+' 题</button>').join('')
+        +'</div></div>'
+        +'<div class="mock-row"><span class="ml">出题范围</span><div class="mc">'
+          +'<button class="opt'+(mockState.cats===null?' on':'')+'" data-action="mock-cats" data-mode="all">全题库（'+overall().total+' 题）</button>'
+          +'<button class="opt'+(mockState.cats==='resume'?' on':'')+'" data-action="mock-cats" data-mode="resume">仅简历关联题</button>'
+          +'<button class="opt'+(mockState.cats==='pick'?' on':'')+'" data-action="mock-cats" data-mode="pick">自选分类</button>'
+        +'</div></div>'
+        +(mockState.cats==='pick'?'<div class="mock-row"><span class="ml">选择分类</span><div class="mc mock-cats">'
+          +CAT_ORDER.map(c=>'<button class="cat-opt'+(mockState.pickCats&&mockState.pickCats[c]?' on':'')+'" data-action="mock-pick" data-c="'+c+'"><span class="cb"></span>'+CATS[c].name+'<span style="margin-left:auto;font-family:var(--mono);font-size:10px;opacity:.6">'+catStats(c).total+'</span></button>').join('')
+        +'</div></div>':'')
+        +'<div class="mock-row" style="border:none"><span class="ml">计时</span><div class="mc"><span style="font-size:12.5px;color:var(--ink-2)">每题建议 2-3 分钟内组织好回答，进入下一题前再对照答案</span></div></div>'
+        +'<div style="padding:14px 0 6px;text-align:center"><button class="btn primary" data-action="mock-start" style="padding:11px 34px">开始面试</button></div>'
+      +'</div>'
+      : (mockState.phase==='running'
+        ? '<div class="card" id="mockCard">'
+            +'<div class="mock-timer"><span class="tt">TIMER</span><b id="mockTime">'+fmtTime(mockState.timer)+'</b><span class="tt" id="mockPauseLabel">'+(mockState.paused?'已暂停':'点击暂停')+'</span>'
+            +'<span class="pause" data-action="mock-pause" id="mockPauseBtn" style="cursor:pointer">'+ (mockState.paused?'▶ 继续':'⏸ 暂停') +'</span></div>'
+            +'<div class="mock-qbody" id="mockBody">'+mockQuestionHTML()+'</div>'
+          +'</div>'
+        : mockResultHTML()))
+    +'</div>';
+  // 事件：setup 阶段
+  $$('#app [data-action="mock-count"]').forEach(b=>b.addEventListener('click', ()=>{
+    mockState.count = +b.dataset.n; renderMock($('#app'));
+  }));
+  $$('#app [data-action="mock-cats"]').forEach(b=>b.addEventListener('click', ()=>{
+    mockState.cats = b.dataset.mode==='all'?null : b.dataset.mode==='resume'?'resume':'pick';
+    renderMock($('#app'));
+  }));
+  $$('#app [data-action="mock-pick"]').forEach(b=>b.addEventListener('click', ()=>{
+    if(!mockState.pickCats) mockState.pickCats = {};
+    mockState.pickCats[b.dataset.c] = !mockState.pickCats[b.dataset.c];
+    renderMock($('#app'));
+  }));
+}
+function fmtTime(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+function mockStart(){
+  let list;
+  if(mockState.cats === 'resume') list = QUESTIONS.filter(q=>q.rel);
+  else if(mockState.cats === 'pick'){
+    const picked = Object.keys(mockState.pickCats||{}).filter(c=>mockState.pickCats[c]);
+    list = QUESTIONS.filter(q=>picked.includes(q.cat));
+  } else list = QUESTIONS.slice();
+  if(!list.length){ alert('该范围暂无题目，请调整范围'); return; }
+  list = list.slice().sort(()=>Math.random()-0.5).slice(0, Math.min(mockState.count, list.length));
+  mockState.phase = 'running';
+  mockState.list = list;
+  mockState.idx = 0;
+  mockState.flipped = false;
+  mockState.timer = 0;
+  mockState.paused = false;
+  if(mockState.timerInt) clearInterval(mockState.timerInt);
+  mockState.timerInt = setInterval(()=>{
+    if(!mockState.paused && mockState.phase==='running'){
+      mockState.timer++;
+      const t = $('#mockTime'); if(t) t.textContent = fmtTime(mockState.timer);
+    }
+  },1000);
+  renderMock($('#app'));
+}
+function mockPause(){
+  mockState.paused = !mockState.paused;
+  const l = $('#mockPauseLabel'); if(l) l.textContent = mockState.paused?'已暂停':'计时中';
+  const b = $('#mockPauseBtn'); if(b) b.textContent = mockState.paused?'▶ 继续':'⏸ 暂停';
+}
+function mockQuestionHTML(){
+  const s = mockState;
+  if(s.idx >= s.list.length) return mockResultHTML();
+  const q = s.list[s.idx];
+  return '<div class="mock-qno">QUESTION '+(s.idx+1)+' / '+s.list.length+'</div>'
+    +'<div class="mock-q">'+esc(q.q)+'</div>'
+    +'<div class="mock-cats-tag">'+CATS[q.cat].name+(q.rel?' · 简历关联':'')+'</div>'
+    +(s.flipped
+      ? '<div class="flash-ans"><div class="answer-label">参考答案</div><div class="answer">'+renderAnswer(q.a)+'</div>'
+        +'<div class="flash-actions" style="padding:14px 0 0">'
+          +'<button class="btn sm" style="background:var(--ok);border-color:var(--ok);color:#fff" data-action="mock-mark" data-level="know">✓ 答得不错</button>'
+          +'<button class="btn sm" style="background:var(--warn);border-color:var(--warn);color:#fff" data-action="mock-mark" data-level="fuzzy">～ 部分会</button>'
+          +'<button class="btn sm" style="background:var(--bad);border-color:var(--bad);color:#fff" data-action="mock-mark" data-level="unknown">✕ 没答上来</button>'
+        +'</div></div>'
+      : '<div style="margin-top:26px"><button class="btn primary" data-action="mock-flip">我已作答，查看参考答案</button></div>');
+}
+function mockFlip(){ mockState.flipped = true; renderMock($('#app')); }
+function mockMark(level){
+  const q = mockState.list[mockState.idx];
+  markQ(q.id, level);
+  addToday();
+  mockState.idx++;
+  mockState.flipped = false;
+  if(mockState.idx >= mockState.list.length) mockFinish();
+  else renderMock($('#app'));
+}
+function mockFinish(){
+  if(mockState.timerInt) clearInterval(mockState.timerInt);
+  mockState.phase = 'done';
+  const r = {know:0, fuzzy:0, bad:0, byCat:{}};
+  mockState.list.forEach(q=>{
+    const m = store.mastery[q.id];
+    if(m==='know') r.know++; else if(m==='fuzzy') r.fuzzy++; else if(m==='unknown') r.bad++;
+    if(!r.byCat[q.cat]) r.byCat[q.cat] = {know:0, fuzzy:0, bad:0, total:0};
+    r.byCat[q.cat].total++;
+    if(m==='know') r.byCat[q.cat].know++;
+    else if(m==='fuzzy') r.byCat[q.cat].fuzzy++;
+    else if(m==='unknown') r.byCat[q.cat].bad++;
+  });
+  const date = new Date().toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  store.mocks.push({date, total:mockState.list.length, know:r.know, fuzzy:r.fuzzy, bad:r.bad, timer:mockState.timer});
+  saveStore();
+  mockState.result = r;
+  renderMock($('#app'));
+}
+function mockResultHTML(){
+  const r = mockState.result;
+  const total = mockState.list.length;
+  const score = total? Math.round(r.know/total*100):0;
+  let bars = '';
+  Object.keys(r.byCat).forEach(cid=>{
+    const b = r.byCat[cid];
+    const rate = Math.round(b.know/b.total*100);
+    bars += '<div class="result-bar"><span class="rb-name">'+CATS[cid].name+'</span><div class="progress"><span style="width:'+rate+'%;background:'+(rate>=70?'var(--ok)':rate>=40?'var(--warn)':'var(--bad)')+'"></span></div><span class="rb-num">'+rate+'%</span></div>';
+  });
+  const weak = Object.keys(r.byCat).filter(cid=> r.byCat[cid].bad > 0).map(cid=>CATS[cid].name);
+  const advice = r.know/total>=0.7 ? '整体掌握不错，保持节奏，重点复习模糊项即可。'
+    : r.know/total>=0.4 ? '基础过关但不够扎实，建议对「模糊」题目逐题回炉，先重看参考答案再合上默述。'
+    : '当前掌握度偏低，不要焦虑——先按分类把题库过一遍，再从「我的 → 错题本」针对性复习。';
+  return '<div class="card result-card">'
+    +'<div class="result-score">'+score+'<span style="font-size:18px;color:var(--ink-3)"> / 100</span></div>'
+    +'<div class="result-sub">'+total+' 题 · 掌握 '+r.know+' · 模糊 '+r.fuzzy+' · 待巩固 '+r.bad+' · 用时 '+fmtTime(mockState.timer)+'</div>'
+    +'<div class="result-bars">'+bars+'</div>'
+    +'<div class="suggest">'
+      +(weak.length?'<div class="sg">'+ic('info')+'<span>建议优先复习：<b style="color:var(--ink)">'+weak.join('、')+'</b></span></div>':'')
+      +'<div class="sg">'+ic('info')+'<span>'+advice+'</span></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap">'
+      +'<button class="btn primary" data-action="mock-restart">再测一次</button>'
+      +'<button class="btn" data-action="nav-bank" data-cat="">去题库复习</button>'
+    +'</div>'
+  +'</div>';
+}
+
+/* ================= 视图：我的 ================= */
+function renderMine(app, tab){
+  const curTab = tab || 'wrong';
+  const wrong = QUESTIONS.filter(q=>store.mastery[q.id]==='unknown');
+  const fuzzy = QUESTIONS.filter(q=>store.mastery[q.id]==='fuzzy');
+  const favs = QUESTIONS.filter(q=>store.fav[q.id]);
+  const tabs = [
+    ['wrong','错题本（'+wrong.length+'）','var(--bad)'],
+    ['fuzzy','模糊（'+fuzzy.length+'）','var(--warn)'],
+    ['fav','收藏（'+favs.length+'）','var(--warn)'],
+    ['hist','模拟记录（'+store.mocks.length+'）','var(--info)']
+  ];
+  const listFor = curTab==='wrong'?wrong : curTab==='fuzzy'?fuzzy : curTab==='fav'?favs : null;
+  app.innerHTML =
+  '<h2 style="font-size:17px;margin-bottom:4px">我的学习</h2>'
+  +'<p style="font-size:12.5px;color:var(--ink-2);margin-bottom:14px">错题与收藏自动保存在本机浏览器，随时回来巩固。</p>'
+  +'<div class="mine-tabs">'+tabs.map(t=>'<button class="mine-tab'+(curTab===t[0]?' on':'')+'" data-action="mine-tab" data-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>';
+  if(curTab==='hist'){
+    app.innerHTML += store.mocks.length
+      ? '<div class="mock-hist">'+store.mocks.slice().reverse().map(m=>
+          '<div class="mock-row-item"><span class="mdate">'+m.date+'</span>'
+          +'<div class="mstat"><span class="chip ok">掌握 '+m.know+'</span><span class="chip warn">模糊 '+m.fuzzy+'</span><span class="chip bad">待巩固 '+m.bad+'</span><span class="chip ghost">'+m.total+' 题 · '+fmtTime(m.timer)+'</span></div>'
+          +'<span class="mscore" style="color:'+(m.know/m.total>=0.7?'var(--ok)':m.know/m.total>=0.4?'var(--warn)':'var(--bad)')+'">'+Math.round(m.know/m.total*100)+'%</span></div>'
+        ).join('')+'</div>'
+        +'<div style="text-align:right;margin-top:10px"><button class="btn sm" data-action="clear-mocks">清空记录</button></div>'
+      : '<div class="hist-empty"><b>还没有模拟记录</b>去「模拟面试」完成一次检验吧</div>';
+  } else if(listFor && listFor.length){
+    app.innerHTML += '<div style="display:flex;flex-direction:column;gap:9px">'+listFor.map(q=>
+      '<button class="qitem" data-action="open-q" data-cat="'+q.cat+'" data-q="'+q.id+'">'
+      +statusDot(q.id)+'<span class="qidx">'+q.cat.slice(0,2).toUpperCase()+'</span>'
+      +'<span class="qmain"><span class="qtitle">'+esc(q.q)+'</span><span class="qsub">'+CATS[q.cat].name+(q.rel?' · 简历关联':'')+'</span></span>'
+      +'<svg class="chev" style="width:15px;height:15px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>'
+    ).join('')+'</div>';
+  } else {
+    app.innerHTML += '<div class="hist-empty"><b>'+(curTab==='wrong'?'没有待巩固的题目':'列表为空')+'</b>'+(curTab==='wrong'?'刷题时标记「不会」的题目会出现在这里':'去题库逛逛吧')+'</div>';
+  }
+}
+
+/* ================= 启动 ================= */
+render();
+</script>
+</body>
+</html>
