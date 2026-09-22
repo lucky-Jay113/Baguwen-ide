@@ -292,6 +292,24 @@ a{color:inherit;text-decoration:none}
 .detail-q{font-size:16.5px;font-weight:700;line-height:1.55;margin-bottom:6px}
 .detail-rel{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--accent);font-weight:700;margin-bottom:10px}
 .detail-rel svg{width:13px;height:13px}
+.plain-box{background:var(--accent-soft);border:1px solid #BFE6CD;border-radius:var(--radius);padding:12px 14px;margin-bottom:12px}
+.plain-tag{font-size:11px;font-weight:800;color:var(--accent-2);margin-bottom:5px;letter-spacing:.3px}
+.plain-text{font-size:13.5px;line-height:1.7;color:var(--ink)}
+.diag-box{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px}
+.diag-tag{font-size:11px;font-weight:800;color:var(--ink-2);margin-bottom:8px;letter-spacing:.3px}
+.theme-head{margin-bottom:16px}
+.theme-head h2{font-size:20px;font-weight:800;margin-bottom:6px}
+.theme-head p{font-size:13px;color:var(--ink-2);line-height:1.6}
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.theme-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;text-align:left;transition:all .15s}
+.theme-card:hover{border-color:var(--accent);box-shadow:var(--shadow);transform:translateY(-1px)}
+.theme-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.theme-name{font-size:15px;font-weight:700}
+.theme-tag{font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:10px}
+.theme-desc{font-size:12.5px;color:var(--ink-2);line-height:1.55;margin-bottom:10px}
+.theme-meta{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+.theme-progress{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--accent);background:var(--accent-soft);padding:3px 10px;border-radius:10px}
+.theme-tip{margin-top:14px;padding:10px 14px;background:var(--accent-soft);border-radius:8px;font-size:12.5px;color:var(--accent-2);line-height:1.6}
 .answer-label{
   display:flex;align-items:center;gap:8px;margin:16px 0 9px;
   font-size:11px;font-weight:700;letter-spacing:1.4px;color:var(--ink-3);
@@ -536,7 +554,11 @@ function saveStore(){
 }
 function markQ(qid, level){
   if(level === null) delete store.mastery[qid];
-  else store.mastery[qid] = level;
+  else {
+    store.mastery[qid] = level;
+    if(!store.rev) store.rev = {};
+    store.rev[qid] = Date.now();
+  }
   saveStore(); refreshChrome();
 }
 function toggleFav(qid){
@@ -595,6 +617,237 @@ function hl(text, kw){
   const parts = String(text).split(safe);
   return parts.join('<mark>'+safe+'</mark>');
 }
+
+/* ============ 学习增强：大白话 / 示意图 / 主题串讲 / 今日复习 ============ */
+const PLAIN = {
+  'java-01':'JDK 是开发包（写代码用），JRE 是运行环境（跑程序用），JVM 是真正执行字节码的虚拟机。JDK 包含 JRE，JRE 包含 JVM。',
+  'java-02':'八种基本类型（byte/short/int/long/float/double/boolean/char），每种都有对应的包装类（Integer 等），包装类就是把基本类型包成对象。',
+  'java-03':'基本类型直接存值、快、在栈上；包装类型是对象、在堆上、能为 null、占内存大，集合里只能用包装类。',
+  'java-04':'自动装箱=基本类型自动变包装类（int→Integer），自动拆箱反过来，编译器偷偷帮你转，不用手动调方法。',
+  'java-05':'封装=藏细节只露接口；继承=儿子复用爸爸的代码；多态=同一个调用，不同对象有不同表现。',
+  'java-06':'编译时多态就是方法重载（同名不同参数），运行时多态就是重写（父类引用调子类方法，运行时才知道调哪个）。',
+  'java-07':'抽象类是半成品只能单继承，可以有普通方法和字段；接口是纯规范可以多实现，以前只有抽象方法。',
+  'java-08':'浅拷贝只复制对象本身，里面的引用字段还是共用一个；深拷贝连引用对象也复制一份，两者完全独立。',
+  'java-09':'==比的是地址（基本类型比值），equals 默认也是比地址，但 String 等类重写后比的是内容。',
+  'java-10':'HashMap 先用 hashCode 找位置再用 equals 确认相等，只重写一个会导致元素存进去找不到。',
+  'java-11':'String 不可变是因为底层数组被 final 修饰不能改，好处是线程安全、能当常量池 key、hash 可缓存；StringBuilder 快但线程不安全。',
+  'java-12':'String a="abc" 会复用常量池里的对象，new String("abc") 一定在堆上新造一个，所以 == 不相等但内容相等。',
+  'java-13':'Error 是 JVM 级别的大问题（如内存溢出）基本救不了；Exception 是程序错误可以处理；受检异常编译期就要求你处理，运行时异常不用。',
+  'java-14':'反射就是程序运行时动态拿到类的信息、调它的方法，哪怕编译时不知道这个类是什么。框架、注解、IOC 全靠它。',
+  'java-15':'注解就是贴在代码上的标签（如 @Override），给编译器或框架看；自定义注解就是自己定义一个标签，加上元注解规定它能用在哪。',
+  'java-16':'final 是修饰符（最终的），finally 是 try 里一定会执行的块，finalize 是 Object 里快废弃的回收前方法。三个完全不同。',
+  'java-17':'Java 只有值传递——基本类型传值的副本，引用类型传的是地址值的副本，所以改对象属性会影响原对象，改引用指向不会。',
+  'col-01':'两大派：Collection（单列：List 队列/Set 去重）和 Map（双列键值对）。List 代表 ArrayList，Map 代表 HashMap。',
+  'col-02':'线程安全的有 Vector/HashTable/ConcurrentHashMap/CopyOnWriteArrayList；不安全的有 ArrayList/HashMap/LinkedList，多线程要自己加锁。',
+  'col-03':'数组长度固定、存基本类型；ArrayList 长度自动扩容、只能装对象、方法多。日常用 ArrayList，性能极致才用数组。',
+  'col-04':'ArrayList 底层数组，随机访问快、中间插入慢；LinkedList 底层链表，插入删除快、随机访问慢。',
+  'col-05':'扩容是新建一个 1.5 倍大的数组把旧元素复制过去。每次扩容都要复制，所以知道大小要提前指定。',
+  'col-06':'就把它想成一排抽屉：先算哈希值定位到哪个抽屉，再在抽屉里挂的链子上找。链表太长（≥8个）就换成红黑树，查得更快。',
+  'col-07':'put 时先算 key 的 hash 定位桶，桶空就直接放；桶非空就比对 key，相同就覆盖，不同就挂链表尾；还要判断要不要扩容。',
+  'col-08':'扩容是容量翻倍。因为容量是 2 的幂，元素在新数组里要么留在原位、要么原位置+旧容量，所以不用重新算 hash。',
+  'col-09':'JDK7 是数组+链表；JDK8 链表太长（≥8）转红黑树，查询从 O(n) 变 O(log n)；JDK7 头插法会成环，JDK8 改尾插。',
+  'col-10':'多线程并发 put 会丢数据、resize 时链表可能成环。解决：用 ConcurrentHashMap 或外部加锁。',
+  'col-11':'两个 key 算出同一位置叫哈希冲突，用链表挂起来；链表太长查找慢，超过 8 个转红黑树加快查找。',
+  'col-12':'HashMap 的线程安全版。JDK7 用分段锁（一把锁管一段），JDK8 改成 synchronized 锁单个桶 + CAS，锁更细、并发更高。',
+  'col-13':'Hashtable 是老古董，方法全加 synchronized 锁整个表、慢；HashMap 不锁、快。现在用 ConcurrentHashMap 代替它。',
+  'col-14':'HashSet 去重无序；LinkedHashSet 按插入顺序排；TreeSet 按大小排序（要实现 Comparable）。',
+  'col-15':'四种遍历：keySet 拿 key 再 get、entrySet 直接拿键值对（推荐）、forEach、迭代器。',
+  'col-16':'写时复制：读不加锁，写时复制一份新数组改完再换。读多写极少的场景用，写多了性能差。',
+  'col-17':'是为了让 hash&(n-1) 等价于取模，散列更均匀，扩容时位置计算也简单。',
+  'jvm-01':'内存分：堆（对象）、栈（方法调用局部变量）、方法区（类信息常量）、程序计数器、本地方法栈。重点是堆和栈。',
+  'jvm-02':'堆、方法区是所有线程共享的；栈、程序计数器、本地方法栈是每个线程私有的。',
+  'jvm-03':'堆里放 new 出来的对象（共享、会 GC）；栈里放方法调用的栈帧和局部变量（线程私有、方法结束就弹掉）。',
+  'jvm-04':'类加载→堆里分配内存→设零值→设对象头→执行 init。面试答这五步就行。',
+  'jvm-05':'对象由对象头（类信息/锁）、实例数据（字段）、对齐填充三部分组成。',
+  'jvm-06':'句柄访问（多一次中转但移动对象不用改引用）和直接指针（快，HotSpot 用这个）。',
+  'jvm-07':'加载→验证→准备→解析→初始化。记成"加验准解初"。',
+  'jvm-08':'类加载像找工作：先让爹（父类加载器）去加载，爹说找不到才自己来。防止核心类被人替换篡改。',
+  'jvm-09':'OOM 就是内存用完了还分配不出来。常见：堆对象没释放、方法区类加载太多、栈太深递归。',
+  'jvm-10':'三种：标记-清除（碎片多）、标记-复制（两块互换无碎片）、标记-整理（往一端挪）。新生代用复制，老年代用整理。',
+  'jvm-11':'GC Roots 就是一定不能回收的对象起点：栈里引用的、静态变量、常量、JNI 引用。从它们搜不到的才回收。',
+  'jvm-12':'G1 把堆切成很多小格子（Region），每次挑垃圾最多的先回收，停顿可预测，大堆用它。',
+  'jvm-13':'强引用=必不回收；软引用=内存不够才回收（缓存用）；弱引用=下次 GC 就回收；虚引用=只收个通知。',
+  'jvm-14':'解释器一行一行翻译（启动快），JIT 把热点代码直接编成机器码（运行快）。两者配合：启动靠解释器，跑起来靠 JIT。',
+  'jvm-15':'三个：启动类加载器（加载核心库）、扩展类加载器、应用类加载器（加载你写的类）。',
+  'con-01':'进程是程序跑起来的实例（独立内存），线程是进程里的执行单元（共享内存）。创建线程：继承 Thread、实现 Runnable、线程池。',
+  'con-02':'新建→就绪→运行→阻塞→死亡，重点是这五个状态怎么互相转。',
+  'con-03':'start() 是让 JVM 开新线程跑 run()；直接调 run() 就是普通方法调用，根本没开新线程。',
+  'con-04':'JMM 规定多线程内存可见性规则：每个线程有自己的工作内存，主内存变量修改要按规则刷回去，否则别的线程看不见。',
+  'con-05':'volatile 保证可见性（一个改了别的立刻看见）和禁止指令重排，但不保证原子性（i++ 还是会错）。适合状态标志位。',
+  'con-06':'volatile 只保证可见性不保证原子；synchronized 既保证可见性又保证原子（互斥），但更重、会阻塞。',
+  'con-07':'底层是对象头里的 monitor（管程）。锁升级：无锁→偏向锁→轻量级锁→重量级锁，越抢越重，不会降级。',
+  'con-08':'按特性分：公平/非公平、可重入、独享/共享、乐观/悲观、自旋锁。面试挑两个讲就行。',
+  'con-09':'synchronized 是关键字、自动释放、非公平；ReentrantLock 是类、要手动 lock/unlock（finally 里）、可公平可超时。灵活但容易忘释放。',
+  'con-10':'CAS=比较并交换，无锁乐观更新：内存值==预期值才改成新值。缺点：循环慢、只能保证一个变量原子、ABA 问题。',
+  'con-11':'死锁是两个线程互相等对方释放锁。四个条件：互斥、持有并等待、不可剥夺、循环等待。按顺序加锁破循环等待最实用。',
+  'con-12':'七个参数：核心线程数、最大线程数、空闲存活、队列、工厂、拒绝策略。任务来先给核心，满了进队列，队列满了开到最大，再满就拒绝。',
+  'con-13':'四种：固定大小、缓存型、单线程、定时。不推荐 Executors 因为队列/线程数没上限会 OOM，要手动 new ThreadPoolExecutor。',
+  'con-14':'AQS 是并发锁底层框架：一个 state 变量+一个等待队列。抢锁就是 CAS 改 state，抢不到进队列挂起，释放时唤醒队首。',
+  'con-15':'ThreadLocal 给每个线程一份独立副本。内存泄漏是因为 map 的 key 是弱引用、value 是强引用，线程池线程不销毁时 value 一直留着，用完要 remove。',
+  'con-16':'常用：ConcurrentHashMap、CopyOnWriteArrayList、BlockingQueue。前两个线程安全集合，BlockingQueue 做生产者消费者。',
+  'spr-01':'Spring 是核心框架（管 Bean）；SpringMVC 是它的 web 层（收请求）；SpringBoot 是脚手架（自动配置，快速搭 Spring）。',
+  'spr-02':'以前是你自己 new 对象，现在把对象交给 Spring 容器管，你要什么它注入什么——控制权反转了。',
+  'spr-03':'实例化→属性填充→Aware 回调→前置处理→初始化→后置→使用→销毁。背个大概顺序。',
+  'spr-04':'BeanFactory 是 Spring 最底层的容器接口；FactoryBean 是你自定义造 Bean 的工厂（getObject 返回你要的对象）。名字像但完全两回事。',
+  'spr-05':'不改原代码，就在方法前后偷偷加日志/事务/权限——像给方法套了一层滤镜。',
+  'spr-06':'JDK 动态代理基于接口（没接口不能用）；CGLIB 基于继承（生成子类，不能代理 final 类）。Spring 默认有接口用 JDK，没接口用 CGLIB。',
+  'spr-07':'七种传播行为，重点两个：REQUIRED（有事务就加入没有就新建，默认）、REQUIRES_NEW（挂起当前事务开新事务）。',
+  'spr-08':'和数据库一样四级。Spring 默认用数据库的隔离级别，可自己改。传播机制比隔离级别考得多。',
+  'spr-09':'同类内部调用、非 public 方法、异常被 catch 没抛出、数据库不支持事务、多线程——都会让 @Transactional 失效。',
+  'spr-10':'@Autowired 是 Spring 的按类型注入；@Resource 是 JDK 的默认按名字注入。日常用 @Autowired 就行。',
+  'spr-11':'用三级缓存解决：单例创建中先把早期对象暴露出来，需要时拿出来。为什么三级不用二级是因为要处理代理对象。',
+  'spr-12':'请求进来→DispatcherServlet→找 HandlerMapping→调 Controller→返回 ModelAndView→视图渲染→响应。',
+  'spr-13':'@Controller 处理请求、@RequestMapping 映射路径、@RequestParam 接参数、@RequestBody 接 JSON、@ResponseBody 返回 JSON、@RestController 等于前两个合一。',
+  'spr-14':'Spring Boot 启动时扫描所有 jar 里的配置文件，看你引入了哪些 starter，自动把需要的 Bean 配好。',
+  'spr-15':'Starter 就是一个依赖包，把某功能需要的所有依赖和默认配置打包在一起，引一个 starter 就有整套，不用自己凑版本。',
+  'spr-16':'单例 Bean 本身不线程安全，但 Spring 让 Bean 不含可变成员变量，状态放方法参数里（栈上），就安全。',
+  'spr-17':'工厂（BeanFactory）、单例（Bean 默认单例）、代理（AOP）、模板方法（JdbcTemplate）、观察者（事件）、适配器。',
+  'myb-01':'JDBC 一堆样板代码（连接、预编译、手动映射结果集）。MyBatis 把 SQL 和 Java 解耦，自动帮你把结果集映射成对象。',
+  'myb-02':'#{} 是预编译占位符（防注入）；${} 是字符串直接替换（有注入风险）。#{} 能防注入是因为它用 PreparedStatement 的 ?。',
+  'myb-03':'Mapper 接口的全限定名对应 XML 里的 namespace，方法名对应 statement id，参数和返回类型自动匹配。',
+  'myb-04':'动态 SQL 标签：if（条件拼接）、where（自动加 where 去 and）、foreach（in 遍历）、set（更新）、choose/when（分支）。',
+  'myb-05':'一级缓存是 SqlSession 级（默认开，同一次会话命中）；二级是 Mapper 级（要手动开，跨会话）。实际用得少。',
+  'myb-06':'MyBatis 执行 SQL 时经过一条拦截链，你可以在链上挂自己的插件，像过滤器一样拦在执行过程里。',
+  'myb-07':'延迟加载=用到关联对象才去查数据库，不一次性全查。比如查用户时不立刻查订单，访问 getOrders() 才查。',
+  'myb-08':'resultType 直接写返回类型名（简单情况）；resultMap 手动定义列名和字段的映射关系（复杂时用）。',
+  'myb-09':'MyBatis 半自动（SQL 自己写、灵活）；Hibernate 全自动（不用写 SQL，但复杂查询不灵活）。国内 MyBatis 主流。',
+  'myb-10':'读配置文件→构建 SqlSessionFactory→打开 SqlSession→注册 Mapper 接口→执行。',
+  'myb-11':'两种：XML 写在文件里（namespace 绑定接口）；注解写在接口方法上（@Select 等）。',
+  'myb-12':'物理分页用 PageHelper 插件（自动加 limit）；RowBounds 是内存分，慢，生产用 PageHelper。',
+  'mys-01':'原子性=要么全做要么全不做；一致性=数据不被玩坏；隔离性=多事务互不干扰；持久性=提交就永久存盘。',
+  'mys-02':'读未提交（脏读）、读已提交（不可重复读）、可重复读（InnoDB 默认，幻读）、串行化。级别越高越安全越慢。',
+  'mys-03':'脏读=读到别人没提交的数据；不可重复读=同一条记录两次读值变了；幻读=同一个范围两次查行数变了（多了行）。',
+  'mys-04':'InnoDB 用 MVCC（快照读）+间隙锁（防止别人往范围里插新行）解决幻读。',
+  'mys-05':'索引就像书的目录：B+树把所有数据放最底层叶子节点、用双向链表串起来，范围查询特别快；树矮，磁盘 IO 少。',
+  'mys-06':'聚簇索引叶子直接存整行（主键就是聚簇索引）；二级索引叶子存主键，查到主键还要回表再查一次整行。',
+  'mys-07':'联合索引（a,b,c）必须从最左列 a 开始连续用，否则索引失效。相当于先按 a 排，a 相同再按 b 排。',
+  'mys-08':'覆盖索引=要查的列全在索引里，不用回表直接返回。把高频查询列放进索引就能用上。',
+  'mys-09':'加索引、避免 select *、where 不用函数/隐式转换、小表驱动大表、explain 看执行计划、分页优化。',
+  'mys-10':'慢查询=执行时间超过阈值的 SQL。开慢查询日志抓出来，用 explain 分析，加索引/改写法。',
+  'mys-11':'按粒度：行锁、表锁、间隙锁；按性质：共享锁（读）、排他锁（写）。锁不到索引会升级表锁。',
+  'mys-12':'MVCC：每行存多个版本（undo log），读的时候按快照读历史版本，写才改最新，读写不互堵。',
+  'mys-13':'binlog 是 Server 层记的改了什么（主从复制用）；redo log 是 InnoDB 记的物理修改（崩溃恢复）；undo log 是回滚用的旧版本。',
+  'mys-14':'SQL 注入就是把恶意 SQL 拼进用户输入里执行。防法：预编译 #{}、白名单、独立只读账号。我项目里 NL2SQL 就是这么防的。',
+  'red-01':'快的秘诀：数据全在内存里、单线程避免加锁抢锁、IO 多路复用。不是真单线程，网络收发是多线程的。',
+  'red-02':'五种：String（缓存/计数）、Hash（对象）、List（队列）、Set（去重/标签）、ZSet（排行榜）。',
+  'red-03':'穿透=查数据库根本没有的东西一直打你；击穿=一个热点 key 刚好过期，请求全打穿到库；雪崩=一堆 key 同时过期。',
+  'red-04':'RDB 是定时快照（快，但宕机丢数据）；AOF 是记每条写命令（安全，但文件大恢复慢）。生产常用 AOF+混合。',
+  'red-05':'先更新数据库再删缓存（Cache Aside）。删缓存而不是更新缓存，因为更新可能有并发脏数据。',
+  'red-06':'过期删除=惰性删除（访问时才删）+定期删除（抽样删）；内存淘汰=内存满了按策略踢（如 LRU 踢最少用的）。',
+  'red-07':'用 SET key value NX EX（不存在才设置+带过期），解锁用 Lua 保证原子性。要设过期防死锁。',
+  'red-08':'IO 多路复用=一个线程监听多个连接，哪个有数据就处理哪个，不用一个连接一个线程，所以单线程也能扛高并发。',
+  'red-09':'热 key=访问量特别集中的 key（会把单 Redis 打挂）；大 key=value 特别大（拖慢网络）。处理：拆 key、压缩。',
+  'red-10':'做缓存（热点数据）、分布式锁、计数器（点赞）、排行榜（ZSet）、会话存储（Session 共享）。',
+  'net-01':'1.0 一次请求一个连接；1.1 长连接可复用；2.0 多路复用（一个连接并行多个请求）、头部压缩、二进制帧。',
+  'net-02':'200 成功、301/302 重定向、304 缓存、400 参数错、401 没登录、403 没权限、404 找不到、500 服务器错。',
+  'net-03':'GET 参数在 URL、有长度限制、幂等、用来查；POST 参数在 body、无长度限制、用来增改。本质都是 TCP。',
+  'net-04':'三次握手：SYN→SYN+ACK→ACK。两次不行是因为旧的重复连接请求会被误建立、浪费资源。',
+  'net-05':'四次挥手：FIN→ACK→FIN→ACK。为什么四次因为被动方可能还有数据没发完，要分两步。',
+  'net-06':'TCP 可靠、面向连接、有序、慢；UDP 不可靠、无连接、快（视频/语音用它）。',
+  'net-07':'HTTP 明文传输；HTTPS=HTTP+TLS 加密，要证书，防窃听篡改。',
+  'net-08':'RESTful 就是一套规范：URL 表资源、用 GET/POST/PUT/DELETE 表增删改、无状态、JSON 格式。',
+  'net-09':'服务器单向推送：浏览器发起请求后连接不断，服务器有事就主动推消息。比 WebSocket 轻，适合实时通知。',
+  'net-10':'Cookie 存在浏览器、小；Session 存在服务器靠 Cookie 认人；Token 自包含（JWT），服务器不存、跨域方便。',
+  'net-11':'TCP 是流式的没有边界，发的多个包可能粘一起（粘包）或被拆（拆包）。解决：定长/加特殊结尾符/包头报长度。',
+  'net-12':'DNS 解析→TCP 三次握手→TLS 握手（HTTPS）→发 HTTP 请求→服务器返回→浏览器渲染→加载资源。',
+  'prj-01':'一句话：我做了个基于大模型的医院智能导诊，Spring Boot+LangChain4j，能问答、查科室、预约挂号。',
+  'prj-02':'多模型就是配了多个 ChatModel Bean（百炼/本地 Ollama），按场景选，换模型只改配置文件不用改业务代码。',
+  'prj-03':'流式用 WebFlux 的 Flux，Controller 逐段推给前端（SSE）。选 WebFlux 因为它异步非阻塞，扛得住长连接的大量用户。',
+  'prj-04':'SSE 就是 text/event-stream 格式，每段数据前面带 data: 、以两个换行结尾，浏览器 EventSource 自动接收。',
+  'prj-05':'大模型不知道你医院的资料，所以先把用户问题去向量库搜相关段落，连同问题一起塞给模型，让它照着资料答。',
+  'prj-06':'关键词搜不了语义（头痛和脑袋疼搜不到一起），向量检索能按意思搜；Pinecone 是免运维的托管向量库，不用自己部署。',
+  'prj-07':'LangChain4j 自带的记忆存内存重启就丢。我自己写 ChatMemoryStore 把对话存 MongoDB，按用户 id 隔离，还做了 20 条滑动窗口。',
+  'prj-08':'用户问病→RAG 检索科室→模型判断要不要挂号→调预约工具写 MySQL→返回结果。形成问→查→约闭环。',
+  'prj-09':'MySQL 存业务数据（预约记录，要事务）；MongoDB 存对话历史（文档型、结构灵活、量大会增删快）。',
+  'prj-10':'预约前先查有没有重复预约（getOne 查重），再把 id 设 null 防模型编主键；工具返回结果校验后才确认。',
+  'prj-11':'用 Knife4j（Swagger 的国产增强）自动生成接口文档，不用手写。',
+  'prj-12':'第二个项目是老师管理学生实验的后台：登录鉴权、数据范围隔离、AI 把老师说的话转 SQL 查数据。',
+  'prj-13':'用户说人话→AI 翻译成查询计划或 SQL→SQL 守卫检查→在只读库执行→返回表格。',
+  'prj-14':'查询计划模式=AI 输出结构化 JSON（安全可控），直接 SQL 模式=AI 直接写 SQL（灵活但风险高），两种互补。',
+  'prj-15':'守卫用 JSqlParser 解析 SQL：表白名单、敏感列黑名单、禁 select *、强制 limit≤201、JOIN≤6、禁多语句。',
+  'prj-16':'AI 生成的 SQL 万一删库怎么办？给它一个只能 SELECT、不能改的数据库账号，就算被注入也删不了数据。',
+  'prj-17':'提示词里放数据库表结构、字段含义、示例 SQL，让 AI 知道查什么；字段从 information_schema 动态读，还过滤敏感字段。',
+  'prj-18':'AI 出错→喂错误信息重试一次；还不行→回退正则兜底；再不行→告诉用户答不了，绝不把 AI 编的 SQL 直接跑。',
+  'prj-19':'登录后 Session 里存角色；老师只能看自己教的班（EXISTS 子查询隔离）；管理员才能用智能查询；历史学期只读。',
+  'prj-20':'用 EasyExcel 把查询结果导成 Excel 下载；统计报表是预聚合好的查询，不走 AI。',
+  'prj-21':'Spring Boot 3.5 要求 Java17+、javax 改 jakarta；2.2 是老 javax。用 LangChain4j 这种新库得升 3.x。',
+  'prj-22':'让 AI 回答后和已知数据对比关键列；限制返回行数≤201 防止全表扫；对比标准 SQL 结果。',
+  'prj-23':'对话用流式不阻塞；AI 查询设超时 5 秒、行数上限；预约用数据库事务；只读账号限制风险。',
+  'prj-24':'诚实说：queryDepartment 接口是占位没写完；数据是模拟的没真上线；没经过真实并发压测。被追问就大方说边界。'
+};
+
+/* 简易 SVG 示意图（绿色简约） */
+function svgHashMap(){
+  return '<svg viewBox="0 0 420 190" style="width:100%;max-width:420px;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">'
+  +'<rect x="8" y="20" width="34" height="150" rx="6" fill="#E7F6EC" stroke="#16A34A" stroke-width="1.5"/>'
+  +'<text x="25" y="12" font-size="11" fill="#15803D" text-anchor="middle">数组(桶)</text>'
+  +'<g font-size="10" fill="#1F2A24">'
+  +'<rect x="14" y="34" width="22" height="16" rx="3" fill="#fff" stroke="#C9D8CC"/><text x="25" y="46" text-anchor="middle">0</text>'
+  +'<rect x="14" y="56" width="22" height="16" rx="3" fill="#fff" stroke="#C9D8CC"/><text x="25" y="68" text-anchor="middle">1</text>'
+  +'<rect x="14" y="78" width="22" height="16" rx="3" fill="#fff" stroke="#C9D8CC"/><text x="25" y="90" text-anchor="middle">2</text>'
+  +'<rect x="14" y="100" width="22" height="16" rx="3" fill="#16A34A"/><text x="25" y="112" text-anchor="middle" fill="#fff">3</text>'
+  +'<rect x="14" y="122" width="22" height="16" rx="3" fill="#fff" stroke="#C9D8CC"/><text x="25" y="134" text-anchor="middle">4</text>'
+  +'<rect x="14" y="144" width="22" height="16" rx="3" fill="#fff" stroke="#C9D8CC"/><text x="25" y="156" text-anchor="middle">…</text>'
+  +'</g>'
+  +'<line x1="36" y1="108" x2="70" y2="108" stroke="#16A34A" stroke-width="1.5"/>'
+  +'<g font-size="10" fill="#1F2A24">'
+  +'<rect x="70" y="98" width="48" height="20" rx="4" fill="#fff" stroke="#16A34A"/><text x="94" y="112" text-anchor="middle">节点A</text>'
+  +'<line x1="118" y1="108" x2="132" y2="108" stroke="#16A34A"/>'
+  +'<rect x="132" y="98" width="48" height="20" rx="4" fill="#fff" stroke="#16A34A"/><text x="156" y="112" text-anchor="middle">节点B</text>'
+  +'<line x1="180" y1="108" x2="194" y2="108" stroke="#16A34A"/>'
+  +'<rect x="194" y="98" width="48" height="20" rx="4" fill="#fff" stroke="#16A34A"/><text x="218" y="112" text-anchor="middle">节点C</text>'
+  +'</g>'
+  +'<text x="150" y="86" font-size="10" fill="#5C6B62" text-anchor="middle">链表（超过 8 个转红黑树）</text>'
+  +'<text x="250" y="160" font-size="11" fill="#15803D">① 算 hashCode → 定位桶(3)　② 沿链表找 → 链表过长转红黑树</text>'
+  +'</svg>';
+}
+function svgBPlus(){
+  return '<svg viewBox="0 0 420 180" style="width:100%;max-width:420px;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">'
+  +'<g font-size="10" fill="#1F2A24">'
+  +'<rect x="170" y="14" width="80" height="26" rx="5" fill="#E7F6EC" stroke="#16A34A"/><text x="210" y="31" text-anchor="middle">根节点(索引)</text>'
+  +'<line x1="210" y1="40" x2="90" y2="66" stroke="#16A34A"/><line x1="210" y1="40" x2="210" y2="66" stroke="#16A34A"/><line x1="210" y1="40" x2="330" y2="66" stroke="#16A34A"/>'
+  +'<rect x="50" y="66" width="80" height="24" rx="5" fill="#fff" stroke="#16A34A"/><text x="90" y="82" text-anchor="middle">非叶子</text>'
+  +'<rect x="170" y="66" width="80" height="24" rx="5" fill="#fff" stroke="#16A34A"/><text x="210" y="82" text-anchor="middle">非叶子</text>'
+  +'<rect x="290" y="66" width="80" height="24" rx="5" fill="#fff" stroke="#16A34A"/><text x="330" y="82" text-anchor="middle">非叶子</text>'
+  +'<line x1="90" y1="90" x2="60" y2="118" stroke="#16A34A"/><line x1="90" y1="90" x2="130" y2="118" stroke="#16A34A"/>'
+  +'<line x1="210" y1="90" x2="180" y2="118" stroke="#16A34A"/><line x1="210" y1="90" x2="250" y2="118" stroke="#16A34A"/>'
+  +'<line x1="330" y1="90" x2="300" y2="118" stroke="#16A34A"/><line x1="330" y1="90" x2="370" y2="118" stroke="#16A34A"/>'
+  +'<rect x="30" y="118" width="60" height="24" rx="5" fill="#16A34A"/><text x="60" y="134" text-anchor="middle" fill="#fff">数据1</text>'
+  +'<rect x="100" y="118" width="60" height="24" rx="5" fill="#16A34A"/><text x="130" y="134" text-anchor="middle" fill="#fff">数据2</text>'
+  +'<rect x="170" y="118" width="60" height="24" rx="5" fill="#16A34A"/><text x="200" y="134" text-anchor="middle" fill="#fff">数据3</text>'
+  +'<rect x="240" y="118" width="60" height="24" rx="5" fill="#16A34A"/><text x="270" y="134" text-anchor="middle" fill="#fff">数据4</text>'
+  +'<rect x="310" y="118" width="60" height="24" rx="5" fill="#16A34A"/><text x="340" y="134" text-anchor="middle" fill="#fff">…</text>'
+  +'<line x1="90" y1="130" x2="100" y2="130" stroke="#15803D" stroke-width="2"/><line x1="160" y1="130" x2="170" y2="130" stroke="#15803D" stroke-width="2"/><line x1="230" y1="130" x2="240" y2="130" stroke="#15803D" stroke-width="2"/><line x1="300" y1="130" x2="310" y2="130" stroke="#15803D" stroke-width="2"/>'
+  +'<text x="210" y="166" font-size="11" fill="#15803D" text-anchor="middle">所有真实数据都在叶子层，叶子用双向链表串 → 范围查询顺着链表扫即可</text>'
+  +'</g></svg>';
+}
+const DIAG = { 'col-06': svgHashMap(), 'mys-05': svgBPlus() };
+
+/* 主题串讲：按分类把题串成一条线 */
+const THEMES = [
+  {cat:'project', name:'简历项目串讲', desc:'你写过代码的 24 题，最好拿分', tag:'优先'},
+  {cat:'collection', name:'集合框架串讲', desc:'HashMap / ArrayList / 红黑树，面试重灾区', tag:'高频'},
+  {cat:'jvm', name:'JVM 串讲', desc:'内存分区 / GC / 类加载，抽象但必考', tag:'难点'},
+  {cat:'concurrency', name:'并发编程串讲', desc:'线程池 / synchronized / volatile', tag:'难点'},
+  {cat:'spring', name:'Spring 串讲', desc:'IoC / AOP / 自动装配 / 动态代理', tag:'高频'},
+  {cat:'mysql', name:'MySQL 串讲', desc:'B+树索引 / 事务 / 锁 / 优化', tag:'高频'},
+  {cat:'redis', name:'Redis 串讲', desc:'为什么快 / 数据类型 / 缓存三兄弟', tag:'高频'},
+  {cat:'java', name:'Java 基础串讲', desc:'面向对象 / 泛型 / 反射 / 异常', tag:'基础'}
+];
+
+/* 今日复习：unknown 优先，其次 fuzzy，按复习时间越久越靠前 */
+function dueReviewList(){
+  const all = QUESTIONS.map(q=>q.id);
+  const scored = all.map(id=>{
+    const lv = store.mastery[id];
+    if(lv !== 'unknown' && lv !== 'fuzzy') return null;
+    const t = (store.rev && store.rev[id]) || 0;
+    return {id, lv, t, pri: lv==='unknown' ? 0 : 1};
+  }).filter(Boolean);
+  scored.sort((a,b)=> a.pri-b.pri || a.t-b.t);
+  return scored;
+}
+
 function $(s,el){return (el||document).querySelector(s)}
 function $$(s,el){return Array.from((el||document).querySelectorAll(s))}
 function statusDot(qid){
@@ -670,6 +923,7 @@ function render(){
   else if(path === '#/bank') renderBank(app, query);
   else if(path === '#/flash') renderFlash(app);
   else if(path === '#/mock') renderMock(app);
+  else if(path === '#/review') renderReview(app);
   else if(path === '#/mine') renderMine(app);
   else { location.hash = '#/dashboard'; return; }
   renderTree(path, query);
@@ -739,6 +993,10 @@ document.addEventListener('click', function(e){
   else if(action === 'open-q'){
     go('#/bank?cat='+el.dataset.cat+'&q='+el.dataset.q);
   }
+  else if(action === 'themes'){ go('#/bank?themes=1'); }
+  else if(action === 'theme-start'){ go('#/bank?theme='+el.dataset.cat+'&step=0'); }
+  else if(action === 'theme-next'){ go(el.dataset.hash); }
+  else if(action === 'theme-back'){ go('#/bank?themes=1'); }
   else if(action === 'toggle-sidebar'){
     $('#sidebar').classList.toggle('open');
     $('#mask').classList.toggle('show');
@@ -838,6 +1096,8 @@ function renderDashboard(app){
         +'</div>'
       +'</div>'
       +'<div class="card quick-card"><h3>'+ic('bolt')+'快捷入口</h3>'
+        +'<button class="quick-item" data-action="route" data-to="#/review"><span class="qi-icon" style="background:var(--warn-soft);color:var(--warn)">'+ic('info')+'</span><span><span class="qi-t" style="display:block">📅 今日复习</span><span class="qi-d">待巩固+模糊题，按遗忘顺序推荐 · <b style="color:var(--warn)">'+dueReviewList().length+' 题</b></span></span><span class="go">→</span></button>'
+        +'<button class="quick-item" data-action="themes"><span class="qi-icon">'+ic('book')+'</span><span><span class="qi-t" style="display:block">📚 主题串讲</span><span class="qi-d">按知识点连贯学，不散看</span></span><span class="go">→</span></button>'
         +'<button class="quick-item" data-action="nav-bank" data-cat="project"><span class="qi-icon">'+ic('rocket')+'</span><span><span class="qi-t" style="display:block">简历项目深挖</span><span class="qi-d">基于你的两个 AI 项目定制追问</span></span><span class="go">→</span></button>'
         +'<button class="quick-item" data-action="nav-bank" data-cat=""><span class="qi-icon">'+ic('book')+'</span><span><span class="qi-t" style="display:block">全部题库</span><span class="qi-d">10 大分类 · '+o.total+' 道真题</span></span><span class="go">→</span></button>'
         +'<button class="quick-item" data-action="route" data-to="#/mine"><span class="qi-icon">'+ic('star')+'</span><span><span class="qi-t" style="display:block">我的学习</span><span class="qi-d">错题本 · 收藏 · 模拟记录</span></span><span class="go">→</span></button>'
@@ -863,6 +1123,9 @@ function ic(name){
 /* ================= 视图：题库 ================= */
 let bankSearch = '';
 function renderBank(app, query){
+  if(query.get('themes')){ renderThemes(app); return; }
+  const themeCat = query.get('theme') || '';
+  if(themeCat){ renderThemePlay(app, query, themeCat); return; }
   const curCat = query.get('cat') || '';
   const curQ = query.get('q') || '';
   let list = QUESTIONS;
@@ -886,6 +1149,7 @@ function renderBank(app, query){
         +'<div class="search-box">'+ic('bolt').replace('<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>','<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>')+'<input id="searchInput" placeholder="搜索题目或答案关键词，如：HashMap、事务、RAG…" value="'+esc(bankSearch)+'"></div>'
         +'<span class="bank-rc">'+(bankSearch?'搜索到 <b style="color:var(--accent)">'+list.length+'</b> 题':'共 '+list.length+' 题')+'</span>'
         +'<button class="btn sm" data-action="route" data-to="#/flash">闪卡模式</button>'
+        +'<button class="btn sm" data-action="themes">📚 串讲模式</button>'
         +'<button class="btn sm" data-action="route" data-to="#/mock">模拟面试</button>'
       +'</div>'
       + (curQ ? '' : qsHtml)
@@ -905,12 +1169,16 @@ function renderBank(app, query){
       const idx = catQs.findIndex(x=>x.id===q.id);
       const prev = catQs[idx-1], next = catQs[idx+1];
       const rel = q.rel ? '<div class="detail-rel">'+ic('bolt')+'简历关联考点 —— 面试官可能围绕这个追问</div>' : '';
+      const plain = PLAIN[q.id] ? '<div class="plain-box"><div class="plain-tag">💡 大白话</div><div class="plain-text">'+esc(PLAIN[q.id])+'</div></div>' : '';
+      const diag = DIAG[q.id] ? '<div class="diag-box"><div class="diag-tag">📊 示意图</div>'+DIAG[q.id]+'</div>' : '';
       app.innerHTML =
       '<div class="detail">'
         +'<div class="detail-tab"><span class="file-dot"></span>'+CATS[q.cat].name+' / <span class="path">'+q.id+'.java</span></div>'
         +'<div class="detail-body">'
           +'<div class="detail-q">'+esc(q.q)+'</div>'
           +rel
+          +plain
+          +diag
           +'<div class="answer-label">参考答案</div>'
           +'<div class="answer">'+renderAnswer(q.a)+'</div>'
         +'</div>'
@@ -932,6 +1200,88 @@ function renderBank(app, query){
     }
   }
 }
+function renderThemes(app){
+  const cards = THEMES.map(t=>{
+    const n = QUESTIONS.filter(q=>q.cat===t.cat).length;
+    return '<button class="theme-card" data-action="theme-start" data-cat="'+t.cat+'">'
+      +'<div class="theme-top"><span class="theme-name">'+t.name+'</span>'
+      +(t.tag?'<span class="theme-tag">'+t.tag+'</span>':'')+'</div>'
+      +'<div class="theme-desc">'+t.desc+'</div>'
+      +'<div class="theme-meta">'+n+' 讲 · 按顺序连贯学</div>'
+      +'</button>';
+  }).join('');
+  app.innerHTML =
+  '<div class="bank-layout"><div class="bank-list">'
+  +'<div class="theme-head"><h2>📚 主题串讲</h2><p>别一题一题散着看：选一个主题，把相关题目按顺序串成一条线学，看完一个知识点自动到下一个。</p></div>'
+  +'<div class="theme-grid">'+cards+'</div>'
+  +'</div></div>';
+}
+
+function renderThemePlay(app, query, themeCat){
+  const all = QUESTIONS.filter(q=>q.cat===themeCat);
+  const step = parseInt(query.get('step')||'0',10);
+  const q = all[step];
+  if(!q){
+    app.innerHTML = '<div class="detail"><div class="detail-body" style="text-align:center;padding:60px 20px">'
+      +'<div style="font-size:40px">🎉</div><h2 style="margin:12px 0 6px">'+CATS[themeCat].name+'串讲完成！</h2>'
+      +'<p style="color:var(--ink-3)">这个主题你已经过了一遍，建议第二天再回来刷一次标记"模糊"的题。</p>'
+      +'<div style="margin-top:20px;display:flex;gap:10px;justify-content:center">'
+      +'<button class="btn primary" data-action="theme-back">返回主题列表</button>'
+      +'<button class="btn sm" data-action="route" data-to="#/bank">回到题库</button></div></div></div>';
+    return;
+  }
+  const plain = PLAIN[q.id] ? '<div class="plain-box"><div class="plain-tag">💡 大白话</div><div class="plain-text">'+esc(PLAIN[q.id])+'</div></div>' : '';
+  const diag = DIAG[q.id] ? '<div class="diag-box"><div class="diag-tag">📊 示意图</div>'+DIAG[q.id]+'</div>' : '';
+  const nextHash = step+1 < all.length ? '#/bank?theme='+themeCat+'&step='+(step+1) : '#/bank?theme='+themeCat+'&step='+all.length;
+  app.innerHTML =
+  '<div class="detail">'
+  +'<div class="detail-tab"><span class="file-dot"></span>串讲 · '+CATS[themeCat].name+'<span class="theme-progress">第 '+(step+1)+' / '+all.length+' 讲</span></div>'
+  +'<div class="detail-body">'
+    +'<div class="detail-q">'+esc(q.q)+'</div>'
+    +(q.rel?'<div class="detail-rel">'+ic('bolt')+'简历关联考点</div>':'')
+    +plain+diag
+    +'<div class="answer-label">参考答案</div>'
+    +'<div class="answer">'+renderAnswer(q.a)+'</div>'
+    +'<div class="theme-tip">💬 看完后合上答案，用自己的话讲一遍讲给面试官听，讲得顺再点下一个知识点。</div>'
+  +'</div>'
+  +'<div class="detail-actions">'
+    +'<button class="mark-btn'+(store.mastery[q.id]==='know'?' on-ok':'')+'" data-action="mark" data-q="'+q.id+'" data-level="know">✓ 已掌握</button>'
+    +'<button class="mark-btn'+(store.mastery[q.id]==='fuzzy'?' on-warn':'')+'" data-action="mark" data-q="'+q.id+'" data-level="fuzzy">～ 模糊</button>'
+    +'<button class="mark-btn'+(store.mastery[q.id]==='unknown'?' on-bad':'')+'" data-action="mark" data-q="'+q.id+'" data-level="unknown">✕ 不会</button>'
+    +'<button class="mark-btn" data-action="theme-back">← 主题列表</button>'
+  +'</div>'
+  +'<div class="detail-nav">'
+    +'<button class="nav-btn" data-action="theme-next" data-hash="'+(step>0?'#/bank?theme='+themeCat+'&step='+(step-1):'#/bank?themes=1')+'" '+(step>0?'':'disabled')+'>← 上一个知识点</button>'
+    +'<span>'+(step+1)+' / '+all.length+'</span>'
+    +'<button class="nav-btn" data-action="theme-next" data-hash="'+nextHash+'">'+(step+1<all.length?'下一个知识点 →':'完成串讲 ✓')+'</button>'
+  +'</div>'
+  +'</div>';
+}
+
+function renderReview(app){
+  const due = dueReviewList();
+  let html;
+  if(!due.length){
+    html = '<div class="empty" style="padding:60px 20px;text-align:center"><div style="font-size:40px">🎉</div><b style="display:block;margin:10px 0 6px">今天没有需要复习的题</b><p style="color:var(--ink-3)">去题库刷点新题，或者做一次模拟面试吧。</p></div>';
+  } else {
+    html = '<div class="theme-head"><h2>📅 今日复习</h2><p>按"待巩固优先、其次模糊、越久没看越靠前"排序。刷完点 ✓ 已掌握，就会移出这个清单。</p></div>';
+    html += due.map((r,i)=>{
+      const q = QUESTIONS.find(x=>x.id===r.id);
+      if(!q) return '';
+      const lvColor = r.lv==='unknown' ? 'var(--bad)' : 'var(--warn)';
+      const lvText = r.lv==='unknown' ? '待巩固' : '模糊';
+      return '<button class="qitem" data-action="open-q" data-cat="'+q.cat+'" data-q="'+q.id+'">'
+        +'<span class="st" style="background:'+lvColor+'"></span>'
+        +'<span class="qidx">'+String(i+1).padStart(2,'0')+'</span>'
+        +'<span class="qmain"><span class="qtitle">'+esc(q.q)+'</span>'
+        +'<span class="qsub">'+CATS[q.cat].name+' · <span style="color:'+lvColor+'">'+lvText+'</span>'+(q.rel?' · 简历关联':'')+'</span></span>'
+        +'<svg class="chev" style="width:15px;height:15px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>'
+        +'</button>';
+    }).join('');
+  }
+  app.innerHTML = '<div class="bank-layout"><div class="bank-list">'+html+'</div></div>';
+}
+
 function renderBankDetail(){
   const {query} = parseRoute();
   if(query.get('q')) renderBank($('#app'), query);
