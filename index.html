@@ -295,6 +295,32 @@ a{color:inherit;text-decoration:none}
 .plain-box{background:var(--accent-soft);border:1px solid #BFE6CD;border-radius:var(--radius);padding:12px 14px;margin-bottom:12px}
 .plain-tag{font-size:11px;font-weight:800;color:var(--accent-2);margin-bottom:5px;letter-spacing:.3px}
 .plain-text{font-size:13.5px;line-height:1.7;color:var(--ink)}
+
+/* 术语弹卡 */
+.term{
+  color:var(--accent);background:var(--accent-soft);
+  border-bottom:1px dashed var(--accent);
+  cursor:pointer;padding:0 4px;border-radius:4px;
+  font-weight:600;white-space:nowrap;transition:background .15s;
+}
+.term:hover{color:var(--ink)}
+.term-pop{
+  position:fixed;z-index:999;max-width:min(330px,calc(100vw - 24px));
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 8px 30px rgba(31,42,36,.16);
+  padding:12px 14px;display:none;animation:popIn .16s ease;
+}
+@keyframes popIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.term-pop .tp-k{font-weight:700;color:var(--accent);font-size:13px;margin-bottom:4px;font-family:var(--mono)}
+.term-pop .tp-t{font-size:12.5px;color:var(--ink-2);line-height:1.65}
+.terms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:6px}
+.term-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;text-align:left;transition:border-color .15s,box-shadow .15s;
+}
+.term-card:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.term-card b{color:var(--accent);display:block;margin-bottom:4px;font-size:13px;font-family:var(--mono)}
+.term-card span{font-size:12px;color:var(--ink-2);line-height:1.6}
 .diag-box{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px}
 .diag-tag{font-size:11px;font-weight:800;color:var(--ink-2);margin-bottom:8px;letter-spacing:.3px}
 .theme-head{margin-bottom:16px}
@@ -481,6 +507,7 @@ a{color:inherit;text-decoration:none}
       <button data-route="#/bank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>题库</span></button>
       <button data-route="#/flash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg><span>闪卡刷题</span></button>
       <button data-route="#/mock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span>模拟面试</span></button>
+      <button data-route="#/terms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6M11 8v6"/></svg><span>术语词典</span></button>
       <button data-route="#/mine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>我的</span></button>
     </nav>
     <div class="tb-right">
@@ -894,11 +921,202 @@ function renderAnswer(text){
   return html;
 }
 function inline(s){
-  return esc(s)
+  return gloss(esc(s)
     .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/(\*\*|`)/g, '');
+    .replace(/(\*\*|`)/g, ''));
 }
+
+/* ============ 术语词典：看不懂的专有名词，点一下用生活例子解释 ============ */
+const TERMS = {
+  'JDK':'Java 开发工具箱：写代码、编译、运行一整套，包含 JRE。',
+  'JRE':'Java 运行环境：只负责把写好的程序跑起来，包含 JVM。',
+  'JVM':'Java 虚拟机：程序真正的"发动机"，把字节码翻译成电脑能懂的话执行。',
+  '装箱':'把 int 这种"值"装进 Integer 这个"盒子"里，变成对象。',
+  '拆箱':'从 Integer 盒子里把 int 值取出来。',
+  '多态':'同一个"吃饭"，人用筷子、狗用碗——调用一样，表现不同。',
+  '重载':'同名方法但参数不同，编译器按参数选，像"叫外卖"分不同窗口。',
+  '重写':'子类把父类的方法换成自己的版本，像歌手翻唱。',
+  '接口':'一张"合同"，规定必须有哪些方法，不管怎么实现，可以签多份。',
+  '抽象类':'半成品模板：有些做好了，有些留空等子类填。',
+  '反射':'程序运行时照镜子，看清自己有哪些类和方法，还能动态调用。框架全靠它。',
+  '注解':'贴在代码上的便利贴，告诉框架"这里要特殊处理"。',
+  'hashCode':'给对象算的"门牌号"，HashMap 靠它快速定位。',
+  'equals':'判断两个对象"内容一样不一样"，String 重写过所以比内容。',
+  '常量池':'字符串的公共仓库：一样的字符串只存一份，省内存。',
+  '受检异常':'编译器强制你处理的问题（如文件找不到），不处理编译不过。',
+  '运行时异常':'程序跑着跑着才爆的问题（如除零），不用提前声明。',
+  '链表':'一串手拉手的节点，中间插入快，但找中间某个要一个个走。',
+  '红黑树':'一棵会自动保持平衡的树，再乱也自我整理，找东西非常快。',
+  '哈希':'把任意数据算成一个固定数字，像给每本书编一个索书号。',
+  '哈希冲突':'两个钥匙开了同一把锁：不同数据算出了同一位置，就排队挂一起。',
+  '扩容':'柜子装不下了，换个大一倍的柜子把东西全搬过去。',
+  '负载因子':'柜子装到 75% 就提前换大柜子的"阈值"。',
+  '迭代器':'挨个访问集合里元素的"指针"，边遍历边删不报错。',
+  '线程安全':'多线程同时操作也不出错，像排队取号而不是一窝蜂抢。',
+  '堆':'new 出来的对象都住这里，是公共大仓库，谁都能访问。',
+  '栈':'方法调用的"工作台"：每调一个方法压一层，返回就弹掉。',
+  '方法区':'存类信息、常量、静态变量的"图书馆"，全程序共享。',
+  '程序计数器':'记录当前线程执行到哪一行的"书签"。',
+  '类加载器':'把 .class 文件搬进内存的"搬运工"。',
+  '双亲委派':'找加载器干活先让"爸爸"来，爸爸不干才自己来——防止核心类被顶包。',
+  'GC':'垃圾回收：自动清理没人再用的对象，程序员不用手动删。',
+  'GC Roots':'GC 的"起点名单"：从这些对象能摸到的都不回收，摸不到的才清掉。',
+  '标记-清除':'先给活对象画记号，再清掉没记号的，简单但有碎片。',
+  '标记-复制':'把活对象搬到另一半，整块清掉另一半，快但费空间。',
+  '标记-整理':'把活对象往一边推紧压实再清，没碎片。',
+  'OOM':'内存彻底用完，再要内存就报 OutOfMemoryError。',
+  'JIT':'把高频热点代码直接编译成机器码缓存起来，越跑越快。',
+  '解释器':'一行一行翻译执行，启动快但整体慢。',
+  '软引用':'内存够就留着，内存不够先回收你——适合做缓存。',
+  '弱引用':'下一轮 GC 必定被回收，用完就走。',
+  '虚引用':'只收一个"要回收了"的通知，像影子一样。',
+  '进程':'一个正在运行的程序实例，独占一块独立内存。',
+  '线程':'进程里的"工人"，共享进程内存，一起干活。',
+  'JMM':'Java 内存模型：规定多线程之间变量怎么共享、怎么同步的"交通规则"。',
+  'volatile':'告诉线程"这个变量别缓存副本，每次都去读最新的"。',
+  'synchronized':'给代码块上锁，同时只允许一个线程进，其他排队。',
+  '原子性':'操作不可分割：要么整个完成，要么什么都不发生，像转账。',
+  '可见性':'一个线程改了变量，其他线程立刻看得见。',
+  '指令重排':'编译器/CPU 为了提速偷偷换执行顺序，单线程没事，多线程可能出错。',
+  'CAS':'先确认值还是老样子再动手改，确认+修改一气呵成（Compare-And-Swap）。',
+  'ABA':'值先变 A 又变回 A，CAS 以为没人动过，其实动过。',
+  '锁升级':'锁从小到大进化：没竞争→少量竞争→抢疯了，越来越重。',
+  '偏向锁':'锁"偏爱"第一个线程，没人和它抢时开销几乎为零。',
+  '轻量级锁':'有少量竞争时的锁，用自旋原地等，不睡大觉。',
+  '重量级锁':'抢疯了就交给操作系统管，慢但绝对可靠。',
+  '自旋':'等锁时不睡觉，原地打转反复看锁开了没。',
+  '死锁':'两个人各拿一把钥匙，都在等对方那把，互相卡死谁也别想动。',
+  '线程池':'提前把线程雇好养着，来任务就派活，省得频繁招人辞人。',
+  '阻塞队列':'任务先排进队里等着，满了后面再来的就堵住。',
+  '拒绝策略':'线程和队列都满了，新任务怎么办：丢弃、报错或让提交者自己干。',
+  'AQS':'锁的底层框架：一个状态变量 + 一个等待队列，ReentrantLock 等全靠它。',
+  'ThreadLocal':'给每个线程发一份独立"便签"，各改各的互不干扰。',
+  '内存泄漏':'用完的东西一直占着内存不还，越积越多最后拖垮程序。',
+  'IoC':'控制反转：对象不自己 new，交给容器统一创建和管理，要什么容器给你。',
+  'DI':'依赖注入：容器把你要的对象直接"递到你手里"。',
+  'Bean':'由 Spring 容器创建和管理的一个对象。',
+  'AOP':'面向切面：不改原代码，在方法前后偷偷加日志、事务、权限。',
+  '切面':'把横跨很多方法的公共逻辑（日志/事务）抽出来切进去的一块。',
+  '动态代理':'运行时临时生成一个"替身"类，替身里偷偷织入额外逻辑。',
+  'CGLIB':'通过生成子类来做代理，没有接口的类也能代理（final 不行）。',
+  '事务':'一组操作要么全部成功、要么全部回滚，像转账不会转一半。',
+  '传播行为':'一个方法遇到已有事务时，是加入它还是新开一个的"策略"。',
+  '隔离级别':'事务之间互相隔多远：别人改到一半的数据我能不能看见。',
+  '循环依赖':'A 要注入 B、B 又要注入 A，互相等对方的死结。',
+  '三级缓存':'三个临时存放点解决循环依赖：先放"半成品"，谁要谁先取走。',
+  '自动装配':'Spring Boot 启动时看你引了哪些依赖，自动把需要的 Bean 配好。',
+  'Starter':'一个依赖包 = 整套功能 + 默认配置，引一个就能用。',
+  '单例':'整个程序只创建一个实例，所有人共用。',
+  '预编译':'SQL 先留"?"占位再填值，用户输入只当数据、不当代码，所以防注入。',
+  '动态SQL':'按条件用 if/where/foreach 等标签拼接 SQL，不写死。',
+  '一级缓存':'同一次会话内重复查询直接返回上次结果，不查库。',
+  '二级缓存':'跨会话共享的缓存，要手动开启，多 Mapper 之间也有效。',
+  '延迟加载':'用到关联对象才去查库，像点菜时才下单，不一次性全查。',
+  '拦截器':'SQL 执行路上的"关卡"，可以插一脚改行为（分页插件就这么干）。',
+  'ACID':'事务四大保证：原子性、一致性、隔离性、持久性。',
+  '脏读':'读到别人还没提交的"半成品"数据。',
+  '不可重复读':'同一条记录，两次读到的值不一样了。',
+  '幻读':'同一个范围，两次查询多出几行"幽灵数据"（别人插进去了）。',
+  'B+树':'一种索引结构：数据全放在最底层叶子、用链表串起来，范围查询飞快。',
+  '聚簇索引':'主键索引：叶子节点直接存整行数据，找到主键就拿到全部。',
+  '非聚簇索引':'普通索引：叶子只存主键，要查整行还得再回表。',
+  '回表':'用普通索引查到主键，再按主键回主索引查一次整行数据。',
+  '最左前缀':'联合索引必须从最左边那列开始连续用，跳列就失效。',
+  '覆盖索引':'要查的列索引里全都有，不用回表直接返回，快。',
+  '慢查询':'执行时间超过阈值的 SQL，要抓出来用 explain 优化。',
+  'MVCC':'多版本并发控制：读的时候看"历史快照"，写才动最新版，读写不互相堵。',
+  '快照读':'读一个"拍照时"的历史版本，不打扰正在写的人。',
+  '间隙锁':'锁住一段"空位"，防止别人往中间插新行（防幻读）。',
+  '行锁':'只锁住一行，别的行照常操作，并发高。',
+  '表锁':'锁整张表，简单粗暴但并发低。',
+  'binlog':'记录"改了什么"的日志，主从复制靠它同步。',
+  'redo log':'崩溃恢复用的日志：数据还没落盘但先记了账，重启照着恢复。',
+  'undo log':'回滚用的"旧版本"数据，MVCC 也靠它。',
+  'SQL注入':'把恶意代码当参数拼进 SQL 里执行，偷数据删数据。',
+  '执行计划':'MySQL 打算怎么执行这条 SQL 的"方案图"，explain 查看。',
+  '缓存穿透':'查一个数据库里根本没有的东西，每次请求都穿透到库。',
+  '缓存击穿':'一个热点 key 刚好过期，一瞬间请求全打到数据库。',
+  '缓存雪崩':'一大批 key 同时过期，数据库被压垮。',
+  '持久化':'把内存里的数据存到磁盘，重启不丢。',
+  'RDB':'Redis 定时给内存"拍快照"存盘：快，但宕机可能丢最新数据。',
+  'AOF':'Redis 把每条写命令记下来，重启重放：安全，但文件大。',
+  '淘汰策略':'内存满了踢谁出去，比如 LRU 踢最久没用的。',
+  '分布式锁':'多台机器抢一把"锁"，谁抢到谁干活，防止重复执行。',
+  'IO多路复用':'一个线程盯着所有连接，谁有数据就处理谁，不用一个连接一个线程。',
+  '热key':'访问量爆炸的单个 key，会把单台 Redis 打挂。',
+  '大key':'value 特别大的 key，传输慢、拖累整条链路。',
+  '三次握手':'建立连接前互相确认：你能听吗→能，你能吗→能。共发 3 个包。',
+  '四次挥手':'断开连接时互道再见：我要关了→好→我也要关了→好。',
+  'TCP':'可靠的传输协议：像寄挂号信，丢了会重寄，保证顺序。',
+  'UDP':'不管到没到的传输：像广播，快但不保证送达。',
+  'HTTPS':'HTTP 外面套了一层加密壳（TLS），防偷看防篡改。',
+  'TLS':'给 HTTP 加密的协议：先握手换钥匙，之后内容加密传输。',
+  '状态码':'服务器返回的结果代码：200 成功、404 找不到、500 服务器挂了。',
+  'Cookie':'存在浏览器里的小纸条，每次请求自动带上，让服务器认人。',
+  'Session':'存在服务器里的档案，靠 Cookie 里的编号找到对应档案。',
+  'Token':'一张"通行证"：服务器验证签名就认账，不用存档案，跨域方便。',
+  'JWT':'一种通行证格式：信息自带在通行证里，无需服务器查档案。',
+  '粘包':'TCP 是数据流没有边界，多个包粘到一起了，要自己分界。',
+  '拆包':'一个完整的数据包被拆成几段传输，要自己拼回来。',
+  'DNS':'把网址翻译成 IP 的"电话簿"。',
+  'RESTful':'一套接口设计规范：URL 用名词表示资源，动词用 HTTP 方法。',
+  'SSE':'服务器单向推送：浏览器发一次请求，连接不断，服务器随时推消息。',
+  'WebSocket':'双向实时通道，浏览器和服务器都能随时发，聊天用它。',
+  '幂等':'同一个操作做几次结果都一样，不会重复扣钱、重复下单。',
+  'RAG':'检索增强生成：先从资料库搜出相关内容，再让 AI 照着资料回答。',
+  '向量检索':'按"意思"搜索：把文字变成一串数字，找数字最接近的。',
+  'Embedding':'把文字变成一串数字（向量）：意思相近的文字，数字也相近。',
+  'LangChain4j':'Java 版的大模型开发框架，封装了对话、检索、工具调用等。',
+  'WebFlux':'Spring 的异步响应式框架，不阻塞线程，高并发下省资源。',
+  '流式':'AI 边生成边把字推给前端，像打字机一样，不用等全部生成完。',
+  'NL2SQL':'自然语言转 SQL：用户说人话，系统生成 SQL 去查数据库。',
+  'JSqlParser':'解析和校验 SQL 的 Java 库：能看清一条 SQL 到底干了什么。',
+  '纵深防御':'多层防护层层设卡：提示词约束 + SQL 校验 + 只读账号，一层被破还有下一层。',
+  '只读账号':'只能查不能改的数据库账号，就算被注入也删不了数据。',
+  '滑动窗口':'只保留最近 N 条对话，防止上下文越积越多爆掉。',
+  'Session共享':'多台服务器之间让用户登录状态通用，不用每台各存各的。'
+};
+const TERM_KEYS = Object.keys(TERMS).sort((a,b)=>b.length-a.length);
+function gloss(html){
+  if(!html) return html;
+  let out = html;
+  for(const k of TERM_KEYS){
+    const pat = k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const re = new RegExp('([^A-Za-z0-9\\u4e00-\\u9fa5]|^)'+pat+'([^A-Za-z0-9\\u4e00-\\u9fa5]|$)', 'g');
+    out = out.replace(re, '$1<span class="term" data-term="'+k+'">'+k+'</span>$2');
+  }
+  return out;
+}
+document.addEventListener('click', function(e){
+  const t = e.target.closest && e.target.closest('.term');
+  if(t){
+    e.stopPropagation();
+    const key = t.getAttribute('data-term');
+    const desc = TERMS[key];
+    if(!desc) return;
+    let pop = document.getElementById('termPop');
+    if(!pop){
+      pop = document.createElement('div');
+      pop.id = 'termPop';
+      pop.className = 'term-pop';
+      document.body.appendChild(pop);
+    }
+    pop.innerHTML = '<div class="tp-k">'+esc(key)+'</div><div class="tp-t">'+esc(desc)+'</div>';
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const pw = pop.offsetWidth, ph = pop.offsetHeight;
+    let x = r.left + r.width/2 - pw/2;
+    x = Math.max(8, Math.min(x, window.innerWidth - pw - 8));
+    let y = r.top - ph - 12;
+    if(y < 8) y = r.bottom + 12;
+    pop.style.left = x + 'px';
+    pop.style.top = y + 'px';
+    return;
+  }
+  const pop = document.getElementById('termPop');
+  if(pop && !e.target.closest('#termPop')) pop.style.display = 'none';
+});
 
 /* ================= 路由 ================= */
 let currentRoute = '#/dashboard';
@@ -924,6 +1142,7 @@ function render(){
   else if(path === '#/flash') renderFlash(app);
   else if(path === '#/mock') renderMock(app);
   else if(path === '#/review') renderReview(app);
+  else if(path === '#/terms') renderTerms(app);
   else if(path === '#/mine') renderMine(app);
   else { location.hash = '#/dashboard'; return; }
   renderTree(path, query);
@@ -1100,6 +1319,7 @@ function renderDashboard(app){
         +'<button class="quick-item" data-action="themes"><span class="qi-icon">'+ic('book')+'</span><span><span class="qi-t" style="display:block">📚 主题串讲</span><span class="qi-d">按知识点连贯学，不散看</span></span><span class="go">→</span></button>'
         +'<button class="quick-item" data-action="nav-bank" data-cat="project"><span class="qi-icon">'+ic('rocket')+'</span><span><span class="qi-t" style="display:block">简历项目深挖</span><span class="qi-d">基于你的两个 AI 项目定制追问</span></span><span class="go">→</span></button>'
         +'<button class="quick-item" data-action="nav-bank" data-cat=""><span class="qi-icon">'+ic('book')+'</span><span><span class="qi-t" style="display:block">全部题库</span><span class="qi-d">10 大分类 · '+o.total+' 道真题</span></span><span class="go">→</span></button>'
+        +'<button class="quick-item" data-action="route" data-to="#/terms"><span class="qi-icon" style="background:var(--accent-soft);color:var(--accent)">'+ic('book')+'</span><span><span class="qi-t" style="display:block">📖 术语词典</span><span class="qi-d">'+Object.keys(TERMS).length+' 个专有名词 · 点开即懂</span></span><span class="go">→</span></button>'
         +'<button class="quick-item" data-action="route" data-to="#/mine"><span class="qi-icon">'+ic('star')+'</span><span><span class="qi-t" style="display:block">我的学习</span><span class="qi-d">错题本 · 收藏 · 模拟记录</span></span><span class="go">→</span></button>'
       +'</div>'
     +'</div>'
@@ -1169,7 +1389,7 @@ function renderBank(app, query){
       const idx = catQs.findIndex(x=>x.id===q.id);
       const prev = catQs[idx-1], next = catQs[idx+1];
       const rel = q.rel ? '<div class="detail-rel">'+ic('bolt')+'简历关联考点 —— 面试官可能围绕这个追问</div>' : '';
-      const plain = PLAIN[q.id] ? '<div class="plain-box"><div class="plain-tag">💡 大白话</div><div class="plain-text">'+esc(PLAIN[q.id])+'</div></div>' : '';
+      const plain = PLAIN[q.id] ? '<div class="plain-box"><div class="plain-tag">💡 大白话 <span style="font-weight:400;color:var(--ink-3);margin-left:6px">带下划线的词都能点开看解释</span></div><div class="plain-text">'+gloss(esc(PLAIN[q.id]))+'</div></div>' : '';
       const diag = DIAG[q.id] ? '<div class="diag-box"><div class="diag-tag">📊 示意图</div>'+DIAG[q.id]+'</div>' : '';
       app.innerHTML =
       '<div class="detail">'
@@ -1230,7 +1450,7 @@ function renderThemePlay(app, query, themeCat){
       +'<button class="btn sm" data-action="route" data-to="#/bank">回到题库</button></div></div></div>';
     return;
   }
-  const plain = PLAIN[q.id] ? '<div class="plain-box"><div class="plain-tag">💡 大白话</div><div class="plain-text">'+esc(PLAIN[q.id])+'</div></div>' : '';
+  const plain = PLAIN[q.id] ? '<div class="plain-box"><div class="plain-tag">💡 大白话</div><div class="plain-text">'+gloss(esc(PLAIN[q.id]))+'</div></div>' : '';
   const diag = DIAG[q.id] ? '<div class="diag-box"><div class="diag-tag">📊 示意图</div>'+DIAG[q.id]+'</div>' : '';
   const nextHash = step+1 < all.length ? '#/bank?theme='+themeCat+'&step='+(step+1) : '#/bank?theme='+themeCat+'&step='+all.length;
   app.innerHTML =
@@ -1285,6 +1505,17 @@ function renderReview(app){
 function renderBankDetail(){
   const {query} = parseRoute();
   if(query.get('q')) renderBank($('#app'), query);
+}
+
+function renderTerms(app){
+  const cards = TERM_KEYS.map(k=>{
+    return '<div class="term-card"><b>'+esc(k)+'</b><span>'+esc(TERMS[k])+'</span></div>';
+  }).join('');
+  app.innerHTML =
+  '<div class="bank-layout"><div class="bank-list">'
+  +'<div class="theme-head"><h2>📖 术语词典 · '+TERM_KEYS.length+' 个</h2><p>看不懂题目，多半是被这些词卡住。先扫一遍打个底，再看题就顺了。答案里带下划线的词也能随时点开看。</p></div>'
+  +'<div class="terms-grid">'+cards+'</div>'
+  +'</div></div>';
 }
 
 /* ================= 视图：闪卡 ================= */
